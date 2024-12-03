@@ -1,5 +1,6 @@
 {
   "expo": {
+    
     "name": "hypercase-app",
     "slug": "hypercase-app",
     "version": "1.0.0",
@@ -27,7 +28,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
