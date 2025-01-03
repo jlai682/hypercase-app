@@ -2,19 +2,79 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { Checkbox } from 'expo-checkbox';
 
+// Define API URL at the top level
+const API_URL = 'http://127.0.0.1:8000/api';
+
 const ConsentForm = ({ onSubmit }) => {
   const [isChecked, setIsChecked] = useState(false);
   const [signature, setSignature] = useState('');
   const [date, setDate] = useState('');
 
-  const handleSubmit = () => {
-    if (isChecked && signature.trim() && date.trim()) {
-      onSubmit({ 
-        consented: isChecked, 
-        signature, 
-        date,
-        timestamp: new Date() 
+  const handleSubmit = async () => {
+    // First validate required fields
+    if (!isChecked || !signature.trim() || !date.trim()) {
+      console.error('Validation failed:', {
+        is_checked: isChecked,
+        digital_signature: signature.trim(),
+        date: date.trim()
       });
+      alert('Please complete all required fields and accept the terms.');
+      return;
+    }
+  
+    // Prepare the form data to match Django model fields
+    const signatureData = {
+      is_checked: isChecked,
+      digital_signature: signature.trim(),
+      date: date.trim()
+    };
+  
+    try {
+      // Log the submission attempt
+      console.log('Submitting signature data:', signatureData);
+      console.log('Submitting to:', `${API_URL}/signatures/`);
+  
+      // Make the request
+      const response = await fetch(`${API_URL}/signatures/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(signatureData)
+      });
+  
+      // Log the response details
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+  
+      // Handle non-200 responses
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response body:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      // Parse and log the success response
+      const data = await response.json();
+      console.log('Success response:', data);
+  
+      // Clear the form
+      setSignature('');
+      setDate('');
+      setIsChecked(false);
+  
+      // Show success message
+      alert('Signature submitted successfully!');
+  
+    } catch (error) {
+      // Comprehensive error logging
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Full error:', error);
+  
+      // Show error message to user
+      alert('Error submitting signature. Please try again.');
     }
   };
 
@@ -57,7 +117,7 @@ const ConsentForm = ({ onSubmit }) => {
             style={styles.input}
             value={date}
             onChangeText={setDate}
-            placeholder="MM/DD/YYYY"
+            placeholder="YYYY-MM-DD"
           />
         </View>
 

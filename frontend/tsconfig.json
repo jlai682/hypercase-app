@@ -13,6 +13,7 @@
     "**/*.tsx",
     "frontend/.expo/types/**/*.ts",
     "expo-env.d.ts",
-    "frontend/.expo/types/**/*.ts"
+    "frontend/.expo/types/**/*.ts",
+    ".expo/types/**/*.ts"
   ]
 }
