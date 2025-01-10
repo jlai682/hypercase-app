@@ -1,17 +1,13 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Alert, Button } from 'react-native';
-import AudioRecorder from '../../components/AudioRecorder';
+import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
-
-const Stack = createNativeStackNavigator();
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
 
-  // Use useFocusEffect instead of useEffect to trigger when tab is focused
   useFocusEffect(
     React.useCallback(() => {
       if (hasPermission === null) {
@@ -36,7 +32,6 @@ export default function RecordScreen() {
             try {
               const { status } = await Audio.requestPermissionsAsync();
               setHasPermission(status === 'granted');
-              
               if (status !== 'granted') {
                 Alert.alert(
                   'Permission Denied',
@@ -53,7 +48,6 @@ export default function RecordScreen() {
     );
   };
 
-  // If no permission, show request button
   if (hasPermission === false) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -62,25 +56,9 @@ export default function RecordScreen() {
     );
   }
 
-  // Show recorder once permission is granted
   return (
     <SafeAreaProvider>
-      <Stack.Navigator>
-        <Stack.Screen
-          name="AudioRecorder"
-          component={AudioRecorder}
-          options={{
-            title: 'Audio Recorder',
-            headerStyle: {
-              backgroundColor: '#1db954',
-            },
-            headerTintColor: '#fff',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-          }}
-        />
-      </Stack.Navigator>
+      <AudioRecorder />
     </SafeAreaProvider>
   );
 }
