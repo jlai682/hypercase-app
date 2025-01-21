@@ -151,10 +151,7 @@ export default function AudioRecorder() {
     }
   };
   */
-<<<<<<< HEAD:frontend/components/AudioRecorder.js
   const API_URL = 'http://127.0.0.1:8000/api';
-=======
->>>>>>> main:components/AudioRecorder.js
 
   const uploadRecording = async (uri, name, duration) => {
     try {
