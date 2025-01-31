@@ -32,7 +32,7 @@ export default function HomeScreen() {
     >
       <ThemedView style={styles.headerContainer}>
         <ThemedText type="title" style={styles.mainTitle}>
-          Voice Health Study
+          acoustiCare
         </ThemedText>
         <ThemedText style={styles.subtitle}>
           Contributing to voice health research through patient participation

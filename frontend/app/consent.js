@@ -86,8 +86,8 @@ const ConsentForm = ({ onSubmit }) => {
         <View style={styles.contentContainer}>
           <Text style={styles.paragraph}>
             By using this application, you agree to have your voice recorded for the purpose
-            of [write some stuff here]. These recordings will be stored securely and may be used
-            for [write more stuff here]. Your privacy is important to us, and your data will be
+            of this app. These recordings will be stored securely and may be used
+            for physician analysis. Your privacy is important to us, and your data will be
             handled in accordance with our privacy policy and applicable data protection laws.
           </Text>
         </View>
