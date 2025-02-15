@@ -3,6 +3,10 @@
     
     "name": "hypercase-app",
     "slug": "hypercase-app",
+    "extra": {
+      "BACKEND_URL": "http://192.168.1.160:8000"
+    },
+    "newArchEnabled": true,
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

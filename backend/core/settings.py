@@ -39,9 +39,33 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'signatures',
+    'patientManagement',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+}
+
+
+#CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # If using React
+    "http://localhost:8081",  # Add this
+
+]
+
+
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  
@@ -78,12 +102,21 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',  # Your database name
+        'USER': 'postgres',  # Your username
+        'PASSWORD': 'HyperCase123!',  # Your password
+        'HOST': 'db.aylqhupmwovytzulrcgy.supabase.co',  # Correct host URL
+        'PORT': '5432',  # Default PostgreSQL port
     }
 }
+
+
+
 
 
 # Password validation
@@ -126,3 +159,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
