@@ -12,24 +12,32 @@ const FeatureCard = ({ iconName, title, description, onPress }) => (
     pressed && styles.cardPressed
   ]}>
     <View style={styles.iconContainer}>
-      <MaterialCommunityIcons name={iconName} size={32} color="#87CFE9" />
+      <MaterialCommunityIcons name={iconName} size={32} color="#87CEFA" />
     </View>
     <View style={styles.cardContent}>
       <ThemedText style={styles.cardTitle}>{title}</ThemedText>
       <ThemedText style={styles.cardDescription}>{description}</ThemedText>
     </View>
-    <MaterialCommunityIcons name="chevron-right" size={24} color="#87CFE9" />
+    <MaterialCommunityIcons name="chevron-right" size={24} color="#87CEFA" />
   </Pressable>
 );
 
 export default function HomeScreen() {
   const router = useRouter();
+  // Set the status bar style
+  React.useEffect(() => {
+    // You may need to implement status bar color changing here
+    // depending on your navigation setup
+  }, []);
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#93C5FD', dark: '#1D4ED8' }}
-      contentContainerStyle={styles.container}
-    >
+    <View style={styles.wrapper}>
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: '#87CEFA', dark: '#87CEFA' }}
+        backgroundColor="#FFFFFF"
+        style={{backgroundColor: '#FFFFFF'}}
+        contentContainerStyle={styles.container}
+      >
       <ThemedView style={styles.headerContainer}>
         <ThemedText type="title" style={styles.mainTitle}>
           AcoustiCare
@@ -63,7 +71,7 @@ export default function HomeScreen() {
       <View style={styles.infoContainer}>
         <View style={styles.infoSection}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="information" size={24} color="#60A5FA" />
+            <MaterialCommunityIcons name="information" size={24} color="#87CEFA" />
             <ThemedText style={styles.sectionTitle}>About This Study</ThemedText>
           </View>
           <ThemedText style={styles.sectionText}>
@@ -75,7 +83,7 @@ export default function HomeScreen() {
 
         <View style={styles.infoSection}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="play-circle" size={24} color="#60A5FA" />
+            <MaterialCommunityIcons name="play-circle" size={24} color="#87CEFA" />
             <ThemedText style={styles.sectionTitle}>Getting Started</ThemedText>
           </View>
           <ThemedText style={styles.sectionText}>
@@ -85,13 +93,18 @@ export default function HomeScreen() {
         </View>
       </View>
     </ParallaxScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#FFFFFF',
+  },
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   headerContainer: {
     gap: 8,
@@ -102,13 +115,13 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#87CFE9',
+    color: '#87CEFA',
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#475569',
+    color: '#6B7280',
     lineHeight: 24,
   },
   featuresContainer: {
@@ -120,18 +133,18 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#87CFE9',
+    shadowColor: '#A0AEC0',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
     gap: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#E2E8F0',
   },
   cardPressed: {
     backgroundColor: '#F8FAFC',
@@ -142,10 +155,10 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F0F9FF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#E2E8F0',
   },
   cardContent: {
     flex: 1,
@@ -154,11 +167,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#87CFE9',
+    color: '#87CEFA',
   },
   cardDescription: {
     fontSize: 14,
-    color: '#475569',
+    color: '#6B7280',
     lineHeight: 20,
   },
   infoContainer: {
@@ -169,9 +182,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#E2E8F0',
     gap: 12,
-    shadowColor: '#93C5FD',
+    shadowColor: '#A0AEC0',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -188,11 +201,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#87CFE9',
+    color: '#87CEFA',
   },
   sectionText: {
     fontSize: 15,
     lineHeight: 24,
-    color: '#475569',
+    color: '#6B7280',
   },
 });
