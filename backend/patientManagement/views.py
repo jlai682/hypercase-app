@@ -40,7 +40,29 @@ def patient_register(request):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
+# @csrf_exempt
+# def patient_login(request):
+#     if request.method == "POST":
+#         try:
+#             data = json.loads(request.body.decode('utf-8'))  # Parse JSON request
+#             email = data.get('email')
+#             password = data.get('password')
 
+#             if not email or not password:
+#                 return JsonResponse({'error': 'Email and password are required'}, status=400)
+
+#             user = authenticate(request, username=email, password=password)
+
+#             if user is not None:
+#                 login(request, user)
+#                 return JsonResponse({'message': 'Login successful'}, status=200)
+#             else:
+#                 return JsonResponse({'error': 'Invalid credentials'}, status=401)
+
+#         except json.JSONDecodeError:
+#             return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+#     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
 @login_required

@@ -3,7 +3,8 @@ from django.contrib.auth.models import User
 
 class Patient(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)  # Link to the user
-    name = models.CharField(max_length=255)
+    firstName = models.CharField(max_length=255)
+    lastName = models.CharField(max_length=255)
     age = models.IntegerField()
     medical_history = models.TextField()
     address = models.TextField()

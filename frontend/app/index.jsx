@@ -31,7 +31,7 @@ export default function Landing() {
       <Image source={require('../assets/images/Soundwave.png')} style={styles.logo} />
 
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/patientSignup')}>
+      <TouchableOpacity style={styles.button} onPress={() => router.push('/patientLogin')}>
         <Text style={styles.buttonText}>Patient Login</Text>
       </TouchableOpacity>
 

@@ -45,7 +45,13 @@ const patientSignup = () => {
 
             <TextInput
                 style={styles.input}
-                placeholder="Full Name"
+                placeholder="First Name"
+                value={name}
+                onChangeText={setName}
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="Last Name"
                 value={name}
                 onChangeText={setName}
             />
@@ -87,33 +93,60 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-        padding: 20,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    input: {
+        backgroundColor: '#cae7ff',
         width: '100%',
-        padding: 10,
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 5,
-        marginBottom: 15,
-        backgroundColor: '#fff',
     },
-    button: {
-        backgroundColor: '#007bff',
-        padding: 10,
-        borderRadius: 5,
+    content: {
+        flex: 1, // Takes available space
+        justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
     },
+    registerContainer: {
+        position:'absolute',
+        bottom: 0,
+        width: '100%',
+        alignItems: 'center',
+        paddingBottom: 30, // Space from the bottom
+    },
+    title: {
+        fontSize: 35,
+        fontFamily: 'Figtree_400Regular',
+        marginBottom: 20,
+        color: '#041575',
+    },
+    input: {
+        width: '80%',
+        padding: 10,
+        borderRadius: 10,
+        marginBottom: 15,
+        backgroundColor: '#fff',
+        placeholderTextColor: "rgba(0, 0, 0, 0.4)" // 50% opacity black
+
+    },
+    inputText: {
+        fontSize: 14,
+    },
+    button: {
+        width: 300,
+        height: 50,
+        backgroundColor: '#041575',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 10,
+        marginVertical: 10,
+    },
     buttonText: {
         color: '#fff',
-        fontSize: 18,
+        fontSize: 16,
+        fontFamily: 'Figtree_400Regular',
+    },
+    registerText: {
+        fontSize: 14,
+        color: '#333',
+    },
+    registerLink: {
+        color: '#0077CC',
         fontWeight: 'bold',
     },
 });
