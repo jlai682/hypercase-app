@@ -39,9 +39,15 @@ export default function Layout() {
         name="patientSignup"  // Ensure this matches the filename without .js
         options={{
           title: 'Patient Signup',
-          headerStyle: {
-            backgroundColor: '#4A90E2',
-          },
+          headerShown: false,
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="patientLogin"  
+        options={{
+          title: 'Patient Login',
+          headerShown: false,
           headerTintColor: '#fff',
         }}
       />
