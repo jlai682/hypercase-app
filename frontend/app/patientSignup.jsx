@@ -1,15 +1,31 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import config from '../config';
-
+import { router } from 'expo-router';
 
 const patientSignup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [age, setAge] = useState('');
 
+    // Form Validation function
+    const validateForm = () => {
+        if (!firstName || !lastName || !email || !password || !age) {
+            Alert.alert('Validation Error', 'Please fill all fields');
+            return false;
+        }
+        if (isNaN(age) || age <= 0) {
+            Alert.alert('Validation Error', 'Please enter a valid age');
+            return false;
+        }
+        return true;
+    };
+
     const handleSignup = async () => {
+        if (!validateForm()) return;  // Stop if validation fails
+
         try {
             const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/register/`, {
                 method: 'POST',
@@ -19,16 +35,16 @@ const patientSignup = () => {
                 body: JSON.stringify({
                     email,
                     password,
-                    name,
-                    age: Number(age),
+                    firstName,
+                    lastName,
+                    age: Number(age),  // Ensure age is a number
                 }),
-                
             });
-    
+
             const data = await response.json();
-    
+
             if (response.ok) {
-                Alert.alert('Signup Successful', 'You can now log in.');
+                router.push('home')
             } else {
                 Alert.alert('Signup Failed', data.error || 'Please try again.');
             }
@@ -37,7 +53,6 @@ const patientSignup = () => {
             Alert.alert('Error', 'Something went wrong. Please try again.');
         }
     };
-    
 
     return (
         <View style={styles.container}>
@@ -46,14 +61,14 @@ const patientSignup = () => {
             <TextInput
                 style={styles.input}
                 placeholder="First Name"
-                value={name}
-                onChangeText={setName}
+                value={firstName}
+                onChangeText={setFirstName}
             />
             <TextInput
                 style={styles.input}
                 placeholder="Last Name"
-                value={name}
-                onChangeText={setName}
+                value={lastName}
+                onChangeText={setLastName}
             />
 
             <TextInput
@@ -96,19 +111,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#cae7ff',
         width: '100%',
     },
-    content: {
-        flex: 1, // Takes available space
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-    },
-    registerContainer: {
-        position:'absolute',
-        bottom: 0,
-        width: '100%',
-        alignItems: 'center',
-        paddingBottom: 30, // Space from the bottom
-    },
     title: {
         fontSize: 35,
         fontFamily: 'Figtree_400Regular',
@@ -121,11 +123,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 15,
         backgroundColor: '#fff',
-        placeholderTextColor: "rgba(0, 0, 0, 0.4)" // 50% opacity black
-
-    },
-    inputText: {
-        fontSize: 14,
+        placeholderTextColor: "rgba(0, 0, 0, 0.4)"
     },
     button: {
         width: 300,
@@ -140,14 +138,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontFamily: 'Figtree_400Regular',
-    },
-    registerText: {
-        fontSize: 14,
-        color: '#333',
-    },
-    registerLink: {
-        color: '#0077CC',
-        fontWeight: 'bold',
     },
 });
 
