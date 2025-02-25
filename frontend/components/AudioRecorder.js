@@ -8,13 +8,46 @@ import {
   ScrollView,
   SafeAreaView,
   Modal,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 
-const RECORDINGS_DIRECTORY = FileSystem.documentDirectory + 'recordings/';
+// Web-compatible storage solution using browser localStorage for web
+const STORAGE_KEY = 'audio_recordings';
+
+// Storage utility functions for cross-platform compatibility
+const storage = {
+  getItem: async (key) => {
+    try {
+      // Use localStorage for web
+      if (Platform.OS === 'web') {
+        const item = localStorage.getItem(key);
+        return item ? item : null;
+      } 
+      // For native platforms, we'll just use in-memory storage for now
+      // You can implement a more persistent storage later
+      return null;
+    } catch (e) {
+      console.error('Error getting data from storage:', e);
+      return null;
+    }
+  },
+  
+  setItem: async (key, value) => {
+    try {
+      // Use localStorage for web
+      if (Platform.OS === 'web') {
+        localStorage.setItem(key, value);
+      }
+      // For native platforms, we'll just use in-memory storage
+      // You can implement a more persistent storage later
+    } catch (e) {
+      console.error('Error storing data:', e);
+    }
+  }
+};
 
 export default function AudioRecorder() {
   const [recording, setRecording] = useState(null);
@@ -28,7 +61,6 @@ export default function AudioRecorder() {
   const [newRecordingName, setNewRecordingName] = useState('');
 
   useEffect(() => {
-    setupRecordingDirectory();
     loadRecordings();
 
     let interval;
@@ -49,29 +81,27 @@ export default function AudioRecorder() {
     };
   }, [isRecording]);
 
-  const setupRecordingDirectory = async () => {
-    const dirInfo = await FileSystem.getInfoAsync(RECORDINGS_DIRECTORY);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(RECORDINGS_DIRECTORY, { intermediates: true });
+  const loadRecordings = async () => {
+    try {
+      const storedRecordings = await storage.getItem(STORAGE_KEY);
+      if (storedRecordings) {
+        // Parse stored recordings and convert date strings back to Date objects
+        const parsedRecordings = JSON.parse(storedRecordings).map(item => ({
+          ...item,
+          date: new Date(item.date)
+        }));
+        setRecordings(parsedRecordings);
+      }
+    } catch (error) {
+      console.error('Failed to load recordings:', error);
     }
   };
 
-  const loadRecordings = async () => {
+  const saveRecordingsToStorage = async (updatedRecordings) => {
     try {
-      const files = await FileSystem.readDirectoryAsync(RECORDINGS_DIRECTORY);
-      const recordingsInfo = await Promise.all(
-        files.map(async (fileName) => {
-          const fileInfo = await FileSystem.getInfoAsync(RECORDINGS_DIRECTORY + fileName);
-          return {
-            name: fileName.replace('.m4a', ''),
-            uri: fileInfo.uri,
-            date: new Date(fileInfo.modificationTime * 1000)
-          };
-        })
-      );
-      setRecordings(recordingsInfo.sort((a, b) => b.date - a.date));
+      await storage.setItem(STORAGE_KEY, JSON.stringify(updatedRecordings));
     } catch (error) {
-      console.error('Failed to load recordings:', error);
+      console.error('Failed to save recordings to storage:', error);
     }
   };
 
@@ -134,19 +164,20 @@ export default function AudioRecorder() {
     }
     
     try {
-      const fileName = `${newRecordingName.trim()}.m4a`;
-      const newUri = RECORDINGS_DIRECTORY + fileName;
+      const newRecording = {
+        name: newRecordingName.trim(),
+        uri: tempRecordingUri,
+        date: new Date()
+      };
       
-      await FileSystem.moveAsync({
-        from: tempRecordingUri,
-        to: newUri
-      });
+      const updatedRecordings = [newRecording, ...recordings];
+      setRecordings(updatedRecordings);
+      await saveRecordingsToStorage(updatedRecordings);
       
       setShowNameModal(false);
       setNewRecordingName('');
       setTempRecordingUri(null);
       setRecordingDuration(0);
-      await loadRecordings();
     } catch (error) {
       console.error('Failed to save recording:', error);
       Alert.alert('Error', 'Could not save recording');
@@ -175,15 +206,24 @@ export default function AudioRecorder() {
       });
     } catch (err) {
       console.error('Failed to play recording:', err);
+      Alert.alert('Error', 'Could not play recording');
     }
   };
 
   const deleteRecording = async (uri) => {
     try {
-      await FileSystem.deleteAsync(uri);
-      await loadRecordings();
+      const updatedRecordings = recordings.filter(item => item.uri !== uri);
+      setRecordings(updatedRecordings);
+      await saveRecordingsToStorage(updatedRecordings);
+      
+      // If the deleted recording is currently playing, stop it
+      if (currentlyPlaying?.uri === uri) {
+        await currentlyPlaying.sound.stopAsync();
+        setCurrentlyPlaying(null);
+      }
     } catch (error) {
       console.error('Failed to delete recording:', error);
+      Alert.alert('Error', 'Could not delete recording');
     }
   };
 
