@@ -36,15 +36,15 @@ export default function Layout() {
         }}
       />
       <Stack.Screen 
-        name="patientSignup"  // Ensure this matches the filename without .js
+        name="signup"  // Ensure this matches the filename without .js
         options={{
-          title: 'Patient Signup',
+          title: 'Signup',
           headerShown: false,
           headerTintColor: '#fff',
         }}
       />
       <Stack.Screen 
-        name="patientLogin"  
+        name="login"  
         options={{
           title: 'Patient Login',
           headerShown: false,

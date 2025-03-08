@@ -31,11 +31,13 @@ export default function Landing() {
       <Image source={require('../assets/images/Soundwave.png')} style={styles.logo} />
 
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/patientLogin')}>
+
+
+      <TouchableOpacity style={styles.button} onPress={() => router.push({pathname: '/login', params: { loginType: "patient" }})}>
         <Text style={styles.buttonText}>Patient Login</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/home')}>
+      <TouchableOpacity style={styles.button} onPress={() => router.push({pathname: '/login', params: { loginType: "provider" }})}>
         <Text style={styles.buttonText}>Provider Login</Text>
       </TouchableOpacity>
     </View>
