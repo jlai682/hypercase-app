@@ -5,13 +5,15 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import config from '../config';
+import { useRouter, useLocalSearchParams } from "expo-router";
+import config from "../config";
 
+const login = () => {
+  const { loginType = "patient" } = useLocalSearchParams(); // Default to "patient" if not provided
+  const router = useRouter();
 
-const PatientLogin = () => {
-  const navigation = useNavigation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -22,22 +24,24 @@ const PatientLogin = () => {
     }
 
     try {
-      const response = await fetch(
-        `${config.BACKEND_URL}/api/patientManagement/login/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const endpoint =
+        loginType === "provider"
+          ? `${config.BACKEND_URL}/api/providerManagement/login/`
+          : `${config.BACKEND_URL}/api/patientManagement/login/`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
       const data = await response.json();
 
       if (response.ok) {
         // Successfully logged in, navigate to home page
-        navigation.navigate("home"); // Adjust 'Home' to the name of your home screen
+        router.push("/home");
       } else {
         // Login failed, show error message
         Alert.alert("Login Failed", data.error || "Please try again");
@@ -51,11 +55,13 @@ const PatientLogin = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Patient Login</Text>
+        <Text style={styles.title}>
+          {loginType === "provider" ? "Provider Login" : "Patient Login"}
+        </Text>
 
         <TextInput
           style={[styles.input, styles.inputText]}
-          placeholder="email"
+          placeholder="Email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -64,7 +70,7 @@ const PatientLogin = () => {
 
         <TextInput
           style={[styles.input, styles.inputText]}
-          placeholder="password"
+          placeholder="Password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -75,12 +81,15 @@ const PatientLogin = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Register Section at the Bottom */}
+      {/* Register Section */}
       <View style={styles.registerContainer}>
-        <TouchableOpacity onPress={() => navigation.navigate("patientSignup")}>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({ pathname: "/signup", params: { signupType: loginType } })
+          }
+        >
           <Text style={styles.registerText}>
-            Don't have an account?{" "}
-            <Text style={styles.registerLink}>Register Now</Text>
+            Don't have an account? <Text style={styles.registerLink}>Register Now</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -97,7 +106,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   content: {
-    flex: 1, // Takes available space
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
@@ -107,7 +116,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "100%",
     alignItems: "center",
-    paddingBottom: 30, // Space from the bottom
+    paddingBottom: 30,
   },
   title: {
     fontSize: 35,
@@ -121,7 +130,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 15,
     backgroundColor: "#fff",
-    placeholderTextColor: "rgba(0, 0, 0, 0.4)", // 50% opacity black
   },
   inputText: {
     fontSize: 14,
@@ -150,4 +158,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PatientLogin;
+export default login;

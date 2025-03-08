@@ -2,8 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import config from '../config';
 import { router } from 'expo-router';
+import { useLocalSearchParams } from "expo-router";
 
-const patientSignup = () => {
+import { useRouter, useRoute } from 'expo-router';
+
+
+const signup = () => {
+
+    const { signupType } = useLocalSearchParams();
+
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
@@ -12,33 +20,56 @@ const patientSignup = () => {
 
     // Form Validation function
     const validateForm = () => {
-        if (!firstName || !lastName || !email || !password || !age) {
-            Alert.alert('Validation Error', 'Please fill all fields');
-            return false;
+        console.log("Validating form...");
+        if (signupType === "patient") {
+            if (!firstName || !lastName || !email || !password || !age) {
+                Alert.alert('Validation Error', 'Please fill all fields');
+                return false;
+            }
+            if (isNaN(age) || age <= 0) {
+                Alert.alert('Validation Error', 'Please enter a valid age');
+                return false;
+            }
         }
-        if (isNaN(age) || age <= 0) {
-            Alert.alert('Validation Error', 'Please enter a valid age');
-            return false;
+        else {
+            if (!firstName || !lastName || !email || !password){
+                Alert.alert('Validation Error', 'Please fill all fields');
+                return false;
+            }
         }
+
+        console.log("Validation passed!");
         return true;
     };
+    
 
     const handleSignup = async () => {
+        console.log("Signup button clicked")
         if (!validateForm()) return;  // Stop if validation fails
 
+        let signupUrl = "" 
+        if (signupType === "patient") {
+            signupUrl = "patientManagement/register/"
+        }
+        else {
+            signupUrl = "providerManagement/register/"
+        }
+
         try {
-            const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/register/`, {
+            const endpoint = signupType === "patient" 
+            ? `${config.BACKEND_URL}/api/patientManagement/register/`
+            : `${config.BACKEND_URL}/api/providerManagement/register/`;
+
+            const requestBody = signupType === "patient"
+                ? { email, password, firstName, lastName, age: Number(age) }
+                : { email, password, firstName, lastName };
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    email,
-                    password,
-                    firstName,
-                    lastName,
-                    age: Number(age),  // Ensure age is a number
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             const data = await response.json();
@@ -56,8 +87,7 @@ const patientSignup = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Patient Signup</Text>
-
+            <Text style={styles.title}>{signupType === "patient" ? 'Patient Signup' : 'Provider Signup'}</Text>
             <TextInput
                 style={styles.input}
                 placeholder="First Name"
@@ -80,13 +110,15 @@ const patientSignup = () => {
                 autoCapitalize="none"
             />
 
-            <TextInput
-                style={styles.input}
-                placeholder="Age"
-                value={age}
-                onChangeText={setAge}
-                keyboardType="numeric"
-            />
+{           signupType === "patient" && (
+                <TextInput
+                    style={styles.input}
+                    placeholder="Age"
+                    value={age}
+                    onChangeText={setAge}
+                    keyboardType="numeric"
+                />
+            )}
 
             <TextInput
                 style={styles.input}
@@ -141,4 +173,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default patientSignup;
+export default signup;
