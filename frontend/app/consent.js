@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { Checkbox } from 'expo-checkbox';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define API URL at the top level
 const API_URL = 'http://127.0.0.1:8000/api';
+
+// Define Supabase URL - direct to Supabase PostgreSQL
+const SUPABASE_URL = 'db.aylqhupmwovytzulrcgy.supabase.co';
 
 // Define color palette - more subdued and official
 const COLORS = {
@@ -19,10 +23,68 @@ const COLORS = {
   sectionBg: '#F8FBFF', // Very light blue background for sections
 };
 
-const ConsentForm = ({ onSubmit }) => {
+const ConsentForm = ({ onSubmit, route }) => {
   const [isChecked, setIsChecked] = useState(false);
   const [signature, setSignature] = useState('');
   const [date, setDate] = useState('');
+  const [patientId, setPatientId] = useState(null);
+  const [existingConsent, setExistingConsent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Get patient ID from storage when component mounts
+  useEffect(() => {
+    const fetchPatientInfo = async () => {
+      try {
+        // Get the patient ID directly from AsyncStorage
+        const storedPatientId = await AsyncStorage.getItem('patientId');
+        console.log('Retrieved patientId from storage:', storedPatientId);
+        
+        if (storedPatientId) {
+          setPatientId(storedPatientId);
+          
+          // Check if patient has existing consent signature
+          fetchExistingConsent(storedPatientId);
+        } else {
+          console.warn('No patient ID found in storage');
+          
+          // Fallback: Get userId and try to get patient data from API
+          const userId = await AsyncStorage.getItem('userId');
+          if (userId) {
+            console.log('Trying to get patient data using userId:', userId);
+            // Implement fallback API call if needed
+          }
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error retrieving patient info:', error);
+        setLoading(false);
+      }
+    };
+    
+    const fetchExistingConsent = async (id) => {
+      try {
+        console.log('Fetching existing consent for patient ID:', id);
+        const response = await fetch(`${API_URL}/signatures/by_patient/?patient_id=${id}`);
+        
+        if (response.ok) {
+          const consentData = await response.json();
+          console.log('Found existing consent data:', consentData);
+          setExistingConsent(consentData);
+          
+          // Pre-fill form with existing data
+          setIsChecked(consentData.is_checked);
+          setSignature(consentData.digital_signature);
+          setDate(consentData.date);
+        } else {
+          console.log('No existing consent found or error fetching consent');
+        }
+      } catch (error) {
+        console.error('Error fetching existing consent:', error);
+      }
+    };
+    
+    fetchPatientInfo();
+  }, []);
 
   const handleSubmit = async () => {
     // First validate required fields
@@ -35,9 +97,32 @@ const ConsentForm = ({ onSubmit }) => {
       alert('Please complete all required fields and accept the terms.');
       return;
     }
+    
+    // Recheck patient ID from storage just to be sure
+    let id = patientId;
+    if (!id) {
+      try {
+        id = await AsyncStorage.getItem('patientId');
+        if (id) {
+          setPatientId(id);
+        }
+      } catch (err) {
+        console.error('Error retrieving patient ID:', err);
+      }
+    }
+    
+    if (!id) {
+      console.error('Patient ID still not found. Current state:', {
+        patientId: patientId,
+        storedPatientId: await AsyncStorage.getItem('patientId')
+      });
+      alert('Unable to submit consent form: Patient ID not found. Please log in again.');
+      return;
+    }
   
     // Prepare the form data to match Django model fields
     const signatureData = {
+      patient_id: id,
       is_checked: isChecked,
       digital_signature: signature.trim(),
       date: date.trim()
@@ -46,10 +131,13 @@ const ConsentForm = ({ onSubmit }) => {
     try {
       // Log the submission attempt
       console.log('Submitting signature data:', signatureData);
-      console.log('Submitting to:', `${API_URL}/signatures/`);
-  
+      
+      // Use the patient-specific endpoint
+      const endpoint = `${API_URL}/signatures/for_patient/`;
+      console.log('Submitting to:', endpoint);
+      
       // Make the request
-      const response = await fetch(`${API_URL}/signatures/`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,26 +148,36 @@ const ConsentForm = ({ onSubmit }) => {
   
       // Log the response details
       console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
   
       // Handle non-200 responses
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response body:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = 'Unknown error occurred';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('Error response body:', errorData);
+        } catch (e) {
+          const errorText = await response.text();
+          console.error('Error response body (text):', errorText);
+          errorMessage = errorText || `HTTP error! status: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
   
       // Parse and log the success response
       const data = await response.json();
       console.log('Success response:', data);
   
-      // Clear the form
-      setSignature('');
-      setDate('');
-      setIsChecked(false);
+      // Update the existing consent data
+      setExistingConsent(data);
   
       // Show success message
       alert('Signature submitted successfully!');
+      
+      // If onSubmit callback provided, call it
+      if (onSubmit) {
+        onSubmit(data);
+      }
   
     } catch (error) {
       // Comprehensive error logging
@@ -88,7 +186,7 @@ const ConsentForm = ({ onSubmit }) => {
       console.error('Full error:', error);
   
       // Show error message to user
-      alert('Error submitting signature. Please try again.');
+      alert(`Error submitting signature: ${error.message}`);
     }
   };
 
