@@ -40,6 +40,31 @@ const login = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // Store user info in AsyncStorage for later use
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        
+        // For patient login, store patient data
+        if (loginType === "patient") {
+          await AsyncStorage.setItem('patientId', data.patient_id?.toString() || '');
+          await AsyncStorage.setItem('userId', data.user_id?.toString() || '');
+          await AsyncStorage.setItem('firstName', data.firstName || '');
+          await AsyncStorage.setItem('lastName', data.lastName || '');
+          await AsyncStorage.setItem('email', data.email || '');
+          await AsyncStorage.setItem('userType', 'patient');
+        } else {
+          // For provider login
+          await AsyncStorage.setItem('providerId', data.provider_id?.toString() || '');
+          await AsyncStorage.setItem('userId', data.user_id?.toString() || '');
+          await AsyncStorage.setItem('email', data.email || '');
+          await AsyncStorage.setItem('userType', 'provider');
+        }
+        
+        console.log('Stored user data:', {
+          patientId: data.patient_id,
+          userId: data.user_id,
+          userType: loginType
+        });
+
         if (loginType === "provider") {
           router.push("/providerDash")
         }

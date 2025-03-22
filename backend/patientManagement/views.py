@@ -78,7 +78,25 @@ def patient_login(request):
 
             if user is not None:
                 login(request, user)
-                return JsonResponse({'message': 'Login successful'}, status=200)
+                
+                # Get the patient object associated with this user
+                try:
+                    patient = Patient.objects.get(user=user)
+                    # Return patient details with the response
+                    return JsonResponse({
+                        'message': 'Login successful',
+                        'patient_id': patient.id,
+                        'user_id': user.id,
+                        'firstName': patient.firstName,
+                        'lastName': patient.lastName,
+                        'email': user.email
+                    }, status=200)
+                except Patient.DoesNotExist:
+                    return JsonResponse({
+                        'message': 'Login successful but patient profile not found',
+                        'user_id': user.id,
+                        'email': user.email
+                    }, status=200)
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=401)
 
