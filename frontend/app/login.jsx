@@ -40,8 +40,12 @@ const login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Successfully logged in, navigate to home page
-        router.push("/home");
+        if (loginType === "provider") {
+          router.push("/providerDash")
+        }
+        else{
+          router.push("/home");
+        }
       } else {
         // Login failed, show error message
         Alert.alert("Login Failed", data.error || "Please try again");

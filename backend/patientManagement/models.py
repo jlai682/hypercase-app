@@ -13,3 +13,10 @@ class Patient(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.user.username}"
+
+    @classmethod
+    def search_by_email(cls, email):
+        try:
+            return cls.objects.get(email=email)
+        except cls.DoesNotExist:
+            return None

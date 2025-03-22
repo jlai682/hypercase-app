@@ -8,6 +8,10 @@ from django.http import JsonResponse
 import json
 from django.contrib.auth.models import User
 
+from patientManagement.models import Patient
+
+
+
 @csrf_exempt
 def providerRegister(request):
     if request.method == "POST":
@@ -76,4 +80,37 @@ def provider_login(request):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def search_patient_by_email(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            email = data.get('email')
+
+            if not email:
+                return JsonResponse({'error': 'Email is required'}, status=400)
+
+            patient = Patient.search_by_email(email)
+
+            if patient:
+                # Optionally, you can return specific fields, for example:
+                patient_data = {
+                    'firstName': patient.firstName,
+                    'lastName': patient.lastName,
+                    'age': patient.age,
+                    'medical_history': patient.medical_history,
+                    'address': patient.address,
+                    'phone_number': patient.phone_number,
+                    'email': patient.email
+                }
+                return JsonResponse({'patient': patient_data}, status=200)
+            else:
+                return JsonResponse({'error': 'Patient not found'}, status=404)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
     return JsonResponse({'error': 'Invalid request method'}, status=405)

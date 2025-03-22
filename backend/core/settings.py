@@ -108,13 +108,14 @@ import os
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',  # Your database name
-        'USER': 'postgres',  # Your username
-        'PASSWORD': 'HyperCase123!',  # Your password
-        'HOST': 'db.aylqhupmwovytzulrcgy.supabase.co',  # Correct host URL
-        'PORT': '5432',  # Default PostgreSQL port
+        'NAME': 'hypercase',  # Replace with your database name
+        'USER': 'postgres',            # Replace with your PostgreSQL username
+        'PASSWORD': 'hypercase123',   # Replace with your PostgreSQL password
+        'HOST': '127.0.0.1',       # Use your local IP address here
+        'PORT': '5432',                # The default PostgreSQL port
     }
 }
+
 
 
 

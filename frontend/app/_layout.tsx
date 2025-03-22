@@ -51,6 +51,16 @@ export default function Layout() {
           headerTintColor: '#fff',
         }}
       />
+      <Stack.Screen 
+        name="providerDash" 
+        options={{
+          title: 'Provider Dashboard',
+          headerStyle: {
+            backgroundColor: '#4A90E2',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
     </Stack>
   );
 }
