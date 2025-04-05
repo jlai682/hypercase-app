@@ -1,6 +1,5 @@
 {
   "expo": {
-    
     "name": "hypercase-app",
     "slug": "hypercase-app",
     "extra": {
@@ -18,7 +17,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +35,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

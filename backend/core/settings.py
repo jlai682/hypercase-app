@@ -36,18 +36,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     'corsheaders',
     'signatures',
     'patientManagement',
     'providerManagement',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+
 }
 
 
@@ -57,6 +61,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',
     'authorization',
+    'Authorization',
 ]
 
 CORS_ALLOWED_ORIGINS = [
