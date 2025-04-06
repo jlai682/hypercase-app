@@ -12,7 +12,7 @@ class Patient(models.Model):
     email = models.EmailField()
 
     def __str__(self):
-        return f"{self.name} - {self.user.username}"
+        return f"{self.firstName} {self.lastName} - {self.user.username}"
 
     @classmethod
     def search_by_email(cls, email):

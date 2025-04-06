@@ -69,11 +69,29 @@ def provider_login(request):
             if not email or not password:
                 return JsonResponse({'error': 'Email and password are required'}, status=400)
             
-            user = authenticate(request, username = email, password=password)
+            user = authenticate(request, username=email, password=password)
 
             if user is not None:
                 login(request, user)
-                return JsonResponse({'message': 'Login successful'}, status=200)
+                
+                # Get the provider object associated with this user
+                try:
+                    provider = Provider.objects.get(user=user)
+                    # Return provider details with the response
+                    return JsonResponse({
+                        'message': 'Login successful',
+                        'provider_id': provider.id,
+                        'user_id': user.id,
+                        'firstName': provider.firstName,
+                        'lastName': provider.lastName,
+                        'email': user.email
+                    }, status=200)
+                except Provider.DoesNotExist:
+                    return JsonResponse({
+                        'message': 'Login successful but provider profile not found',
+                        'user_id': user.id,
+                        'email': user.email
+                    }, status=200)
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=401)
             

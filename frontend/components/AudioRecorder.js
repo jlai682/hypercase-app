@@ -9,10 +9,16 @@ import {
   SafeAreaView,
   Modal,
   TextInput,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+
+// Backend API URL - Update this with your Django server address
+import config from '../app/config';
+const API_URL = `${config.BACKEND_URL}/api/recordings/upload/`;  
 
 // Web-compatible storage solution using browser localStorage for web
 const STORAGE_KEY = 'audio_recordings';
@@ -59,6 +65,11 @@ export default function AudioRecorder() {
   const [tempRecordingUri, setTempRecordingUri] = useState(null);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newRecordingName, setNewRecordingName] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  // Web-specific state
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [audioStream, setAudioStream] = useState(null);
 
   useEffect(() => {
     loadRecordings();
@@ -72,11 +83,38 @@ export default function AudioRecorder() {
 
     return () => {
       if (interval) clearInterval(interval);
-      if (recording) {
-        recording.stopAndUnloadAsync();
+      
+      // Safely cleanup recording objects
+      if (Platform.OS === 'web') {
+        if (audioStream) {
+          // Stop all audio tracks
+          audioStream.getTracks().forEach(track => track.stop());
+        }
+        
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          try {
+            mediaRecorder.stop();
+          } catch (error) {
+            console.log('Error stopping media recorder:', error);
+          }
+        }
+      } else {
+        if (recording) {
+          try {
+            recording.stopAndUnloadAsync();
+          } catch (error) {
+            console.log('Error cleaning up recording:', error);
+          }
+        }
       }
+      
+      // Cleanup sound playback
       if (sound) {
-        sound.unloadAsync();
+        try {
+          sound.unloadAsync();
+        } catch (error) {
+          console.log('Error unloading sound:', error);
+        }
       }
     };
   }, [isRecording]);
@@ -117,24 +155,51 @@ export default function AudioRecorder() {
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permission required', 'Please grant microphone access to record.');
-        return;
+      if (Platform.OS === 'web') {
+        // Web implementation using MediaRecorder API
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          setAudioStream(stream);
+          
+          const recorder = new MediaRecorder(stream);
+          const chunks = [];
+          
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              chunks.push(e.data);
+            }
+          };
+          
+          recorder.start();
+          setMediaRecorder(recorder);
+          setAudioChunks(chunks);
+          setIsRecording(true);
+          setRecordingDuration(0);
+        } catch (error) {
+          console.error('Error accessing microphone:', error);
+          Alert.alert('Permission Error', 'Please allow microphone access to record.');
+        }
+      } else {
+        // Native implementation
+        const permission = await Audio.requestPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permission required', 'Please grant microphone access to record.');
+          return;
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        const { recording: newRecording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        
+        setRecording(newRecording);
+        setIsRecording(true);
+        setRecordingDuration(0);
       }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      
-      setRecording(newRecording);
-      setIsRecording(true);
-      setRecordingDuration(0);
     } catch (err) {
       console.error('Failed to start recording:', err);
       Alert.alert('Error', 'Could not start recording');
@@ -143,17 +208,164 @@ export default function AudioRecorder() {
 
   const stopRecording = async () => {
     try {
-      if (!recording) return;
+      if (Platform.OS === 'web') {
+        // Web implementation
+        if (!mediaRecorder) return;
+        
+        // Create a promise that resolves when the recording is stopped
+        const stopPromise = new Promise(resolve => {
+          mediaRecorder.onstop = () => {
+            // Create a blob from the chunks
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Stop all tracks
+            if (audioStream) {
+              audioStream.getTracks().forEach(track => track.stop());
+              setAudioStream(null);
+            }
+            
+            setTempRecordingUri(audioBlob); // Store the blob directly for web
+            setMediaRecorder(null);
+            setAudioChunks([]);
+            setIsRecording(false);
+            resolve();
+          };
+        });
+        
+        // Stop the media recorder
+        mediaRecorder.stop();
+        
+        // Wait for the recording to stop
+        await stopPromise;
+        
+        setShowNameModal(true);
+      } else {
+        // Native implementation
+        if (!recording) return;
 
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setTempRecordingUri(uri);
-      setRecording(null);
-      setIsRecording(false);
-      setShowNameModal(true);
+        await recording.stopAndUnloadAsync();
+        const uri = recording.getURI();
+        setTempRecordingUri(uri);
+        setRecording(null);
+        setIsRecording(false);
+        setShowNameModal(true);
+      }
     } catch (err) {
       console.error('Failed to stop recording:', err);
       Alert.alert('Error', 'Could not save recording');
+    }
+  };
+
+  // Function to upload recording to Django backend
+  const uploadRecordingToServer = async (uri, name) => {
+    if (!uri) return null;
+    
+    setIsUploading(true);
+    
+    try {
+      // Web-specific implementation
+      if (Platform.OS === 'web') {
+        // For web, the uri might be a blob
+        const formData = new FormData();
+        
+        let fileBlob;
+        if (uri instanceof Blob) {
+          fileBlob = uri;
+        } else {
+          // If it's a URL, fetch it as a blob
+          try {
+            const response = await fetch(uri);
+            fileBlob = await response.blob();
+          } catch (error) {
+            console.error("Error converting URI to blob:", error);
+            throw new Error("Could not process audio file");
+          }
+        }
+        
+        // Append the file to form data with a proper filename
+        formData.append('file', fileBlob, `${name}.webm`);
+        formData.append('title', name);
+        formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
+        
+        // Send the request
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to upload recording');
+        }
+        
+        const responseData = await response.json();
+        return responseData.id;
+      } 
+      else {
+        // Native implementation
+        try {
+          // Get file info - wrapped in try/catch to handle potential errors
+          const fileInfo = await FileSystem.getInfoAsync(uri);
+          
+          // Create form data for multipart/form-data request
+          const formData = new FormData();
+          
+          // Get file extension
+          const fileExtension = uri.split('.').pop();
+          
+          // Add file to form data
+          formData.append('file', {
+            uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+            name: `${name}.${fileExtension}`,
+            type: `audio/${fileExtension === 'mp4' ? 'm4a' : fileExtension}`
+          });
+          
+          // Add metadata
+          formData.append('title', name);
+          formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
+          
+          // Get patient ID from AsyncStorage if available
+          try {
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            const patientId = await AsyncStorage.getItem('patientId');
+            
+            // Add patient ID if available
+            if (patientId) {
+              formData.append('patient_id', patientId);
+              console.log('Adding patient ID to recording:', patientId);
+            }
+          } catch (error) {
+            console.log('AsyncStorage not available or patient ID not found');
+          }
+          
+          // Upload to server
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            }
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to upload recording');
+          }
+          
+          const responseData = await response.json();
+          return responseData.id;
+        } catch (error) {
+          console.error('Native upload error:', error);
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      Alert.alert('Upload Failed', error.message || 'Could not upload recording to server');
+      return null;
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -164,10 +376,26 @@ export default function AudioRecorder() {
     }
     
     try {
+      // First upload to server
+      const serverId = await uploadRecordingToServer(tempRecordingUri, newRecordingName.trim());
+      
+      // Create a URI for storage in the recordings list
+      let uriForStorage;
+      if (Platform.OS === 'web' && tempRecordingUri instanceof Blob) {
+        // For web blobs, create a persistent URL
+        uriForStorage = URL.createObjectURL(tempRecordingUri);
+      } else {
+        uriForStorage = tempRecordingUri;
+      }
+      
+      // Then save locally with server reference
       const newRecording = {
         name: newRecordingName.trim(),
-        uri: tempRecordingUri,
-        date: new Date()
+        uri: uriForStorage,
+        serverId: serverId, // Store the server ID reference
+        date: new Date(),
+        uploaded: !!serverId, // Track upload status
+        isBlob: Platform.OS === 'web' && tempRecordingUri instanceof Blob
       };
       
       const updatedRecordings = [newRecording, ...recordings];
@@ -178,6 +406,12 @@ export default function AudioRecorder() {
       setNewRecordingName('');
       setTempRecordingUri(null);
       setRecordingDuration(0);
+      
+      if (serverId) {
+        Alert.alert('Success', 'Recording saved and uploaded to server');
+      } else {
+        Alert.alert('Partially Saved', 'Recording saved locally but failed to upload to server');
+      }
     } catch (error) {
       console.error('Failed to save recording:', error);
       Alert.alert('Error', 'Could not save recording');
@@ -192,18 +426,46 @@ export default function AudioRecorder() {
         setCurrentlyPlaying(null);
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true }
-      );
-      
-      setCurrentlyPlaying({ uri, sound: newSound });
-      
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) {
+      if (Platform.OS === 'web') {
+        // Web implementation
+        let audioUrl = uri;
+        
+        // Create a new HTML5 Audio element
+        const newSound = new Audio(audioUrl);
+        
+        // Create a wrapper object with compatible interface for our state
+        const soundWrapper = {
+          stopAsync: () => {
+            newSound.pause();
+            newSound.currentTime = 0;
+            return Promise.resolve();
+          }
+        };
+        
+        // Set up ended event
+        newSound.onended = () => {
           setCurrentlyPlaying(null);
-        }
-      });
+        };
+        
+        // Start playing
+        newSound.play();
+        
+        setCurrentlyPlaying({ uri, sound: soundWrapper });
+      } else {
+        // Native implementation using Expo AV
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true }
+        );
+        
+        setCurrentlyPlaying({ uri, sound: newSound });
+        
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            setCurrentlyPlaying(null);
+          }
+        });
+      }
     } catch (err) {
       console.error('Failed to play recording:', err);
       Alert.alert('Error', 'Could not play recording');
@@ -212,6 +474,31 @@ export default function AudioRecorder() {
 
   const deleteRecording = async (uri) => {
     try {
+      // Find the recording to check if it has a server ID
+      const recordingToDelete = recordings.find(item => item.uri === uri);
+      
+      // If the recording has a server ID, also delete from server (optional)
+      if (recordingToDelete?.serverId) {
+        try {
+          // Add server deletion logic here if your API supports it
+          // await fetch(`${API_URL}/${recordingToDelete.serverId}/`, {
+          //   method: 'DELETE',
+          // });
+        } catch (serverError) {
+          console.error('Failed to delete from server:', serverError);
+          // Continue with local deletion even if server deletion fails
+        }
+      }
+      
+      // If on web and the recording is stored as a blob URL, revoke it
+      if (Platform.OS === 'web' && recordingToDelete?.isBlob) {
+        try {
+          URL.revokeObjectURL(uri);
+        } catch (error) {
+          console.error('Error revoking object URL:', error);
+        }
+      }
+      
       const updatedRecordings = recordings.filter(item => item.uri !== uri);
       setRecordings(updatedRecordings);
       await saveRecordingsToStorage(updatedRecordings);
@@ -240,6 +527,7 @@ export default function AudioRecorder() {
           <TouchableOpacity
             onPress={isRecording ? stopRecording : startRecording}
             style={[styles.recordButton, isRecording && styles.recordingActive]}
+            disabled={isUploading}
           >
             <Ionicons 
               name="mic"
@@ -269,7 +557,12 @@ export default function AudioRecorder() {
                   />
                 </TouchableOpacity>
                 <View style={styles.recordingInfo}>
-                  <Text style={styles.recordingName}>{item.name}</Text>
+                  <Text style={styles.recordingName}>
+                    {item.name}
+                    {item.uploaded && (
+                      <Text style={styles.uploadedTag}> (uploaded)</Text>
+                    )}
+                  </Text>
                   <Text style={styles.recordingDate}>{formatDate(item.date)}</Text>
                 </View>
                 <TouchableOpacity 
@@ -311,14 +604,20 @@ export default function AudioRecorder() {
                     setTempRecordingUri(null);
                     setRecordingDuration(0);
                   }}
+                  disabled={isUploading}
                 >
                   <Text style={styles.buttonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.modalButton, styles.saveButton]}
                   onPress={saveRecording}
+                  disabled={isUploading}
                 >
-                  <Text style={styles.buttonText}>Save</Text>
+                  {isUploading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={styles.buttonText}>Save & Upload</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -397,6 +696,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#2D3748',
+  },
+  uploadedTag: {
+    fontSize: 12,
+    color: '#38A169',
+    fontStyle: 'italic',
   },
   recordingDate: {
     fontSize: 12,
