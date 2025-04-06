@@ -11,10 +11,38 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Where the recordings will be stored
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Configure specific directory for recordings
+RECORDINGS_DIR = os.path.join(MEDIA_ROOT, 'recordings')
+
+# Ensure directories exist
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
+# For handling file uploads, you might want to adjust these settings:
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+
+# If you need to allow larger file uploads, increase these values
+# Make sure your web server configuration also allows for larger uploads
+
+# For audio formats, add these MIME types to accepted formats
+ALLOWED_AUDIO_FORMATS = [
+    'audio/mpeg',       # MP3
+    'audio/mp4',        # M4A
+    'audio/wav',        # WAV
+    'audio/x-wav',      # WAV (alternative MIME)
+    'audio/webm',       # WebM
+    'audio/ogg',        # OGG
+    'application/ogg',  # OGG (alternative MIME)
+]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -40,6 +68,7 @@ INSTALLED_APPS = [
     'signatures',
     'patientManagement',
     'providerManagement',
+    'recordings'
     'rest_framework',
     'rest_framework_simplejwt',
 ]
@@ -55,20 +84,50 @@ REST_FRAMEWORK = {
 }
 
 
-#CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
     'content-type',
     'authorization',
-    'Authorization',
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'pragma',
+    'Authorization'
+
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # If using React
     "http://localhost:8081",  # Add this
-
+    "http://localhost:19000",  # Expo development server
+    "http://localhost:19006",  # Expo web
+    "exp://localhost:19000",   # Expo client
+    "http://127.0.0.1:19000",  # Expo development server alternative
+    "http://127.0.0.1:19006",  # Expo web alternative
+    "exp://127.0.0.1:19000",    # Expo client alternative
+    "http://172.20.8.4"
 ]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Alternative: Allow all origins for development
+# CORS_ALLOW_ALL_ORIGINS = True
 
 
 

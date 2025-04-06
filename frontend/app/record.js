@@ -4,6 +4,7 @@ import { View, Alert, Button } from 'react-native';
 import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
+import { Platform } from 'react-native';
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
@@ -17,6 +18,12 @@ export default function RecordScreen() {
   );
 
   const checkPermission = () => {
+    if (Platform.OS === 'web') {
+      // For web, we'll check permissions when the user tries to record
+      setHasPermission(true);
+      return;
+    }
+
     Alert.alert(
       "Voice Recording Permission",
       "Do you allow this app to record your voice?",
