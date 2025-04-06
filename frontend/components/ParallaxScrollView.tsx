@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedView } from '@/components/ThemedView';
+import NavBar from '@/components/navigation/NavBar';
 
 const HEADER_HEIGHT = 250;
 
@@ -55,6 +56,7 @@ export default function ParallaxScrollView({
         </Animated.View>
         <ThemedView style={styles.content}>{children}</ThemedView>
       </Animated.ScrollView>
+      <NavBar />
     </ThemedView>
   );
 }
