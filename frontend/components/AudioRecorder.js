@@ -15,6 +15,8 @@ import {
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
+// Import AuthContext for JWT tokens
+import { useAuth } from "./context/AuthContext";
 
 // Backend API URL - Update this with your Django server address
 import config from '../app/config';
@@ -70,6 +72,33 @@ export default function AudioRecorder() {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const [audioStream, setAudioStream] = useState(null);
+  
+  // Access the token from AuthContext
+  const { authState } = useAuth();
+  const token = authState?.token;
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token || !isValidJWT(token)) {
+      return true;
+    }
+
+    try {
+      const {exp} = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return exp < currentTime;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return true;
+    }
+  };
+
+  // Check if token has a valid JWT format
+  const isValidJWT = (token) => {
+    if (typeof token !== 'string') return false;
+    const parts = token.split('.');
+    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
+  };
 
   useEffect(() => {
     loadRecordings();
@@ -257,9 +286,22 @@ export default function AudioRecorder() {
     }
   };
 
-  // Function to upload recording to Django backend
+  // Function to upload recording to Django backend with JWT
   const uploadRecordingToServer = async (uri, name) => {
     if (!uri) return null;
+    
+    // Check token validity
+    if (!token) {
+      console.error("No token found, authentication required.");
+      Alert.alert('Authentication Required', 'Please log in to upload recordings.');
+      return null;
+    }
+    
+    if (isTokenExpired(token)) {
+      console.error("Token is expired");
+      Alert.alert('Session Expired', 'Your session has expired. Please log in again.');
+      return null;
+    }
     
     setIsUploading(true);
     
@@ -288,11 +330,18 @@ export default function AudioRecorder() {
         formData.append('title', name);
         formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
         
-        // Send the request
+        // Send the request with JWT token
         const response = await fetch(API_URL, {
           method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`  // Include JWT token
+          },
           body: formData,
         });
+        
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Session expired. Please log in again.');
+        }
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -325,12 +374,11 @@ export default function AudioRecorder() {
           formData.append('title', name);
           formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
           
-          // Get patient ID from AsyncStorage if available
+          // Add patient ID if available (this part stays the same)
           try {
             const AsyncStorage = require('@react-native-async-storage/async-storage').default;
             const patientId = await AsyncStorage.getItem('patientId');
             
-            // Add patient ID if available
             if (patientId) {
               formData.append('patient_id', patientId);
               console.log('Adding patient ID to recording:', patientId);
@@ -339,14 +387,19 @@ export default function AudioRecorder() {
             console.log('AsyncStorage not available or patient ID not found');
           }
           
-          // Upload to server
+          // Upload to server with JWT token
           const response = await fetch(API_URL, {
             method: 'POST',
-            body: formData,
             headers: {
               'Content-Type': 'multipart/form-data',
-            }
+              'Authorization': `Bearer ${token}`  // Include JWT token
+            },
+            body: formData
           });
+          
+          if (response.status === 401) {
+            throw new Error('Unauthorized: Session expired. Please log in again.');
+          }
           
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -362,7 +415,14 @@ export default function AudioRecorder() {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      Alert.alert('Upload Failed', error.message || 'Could not upload recording to server');
+      
+      // Handle authentication errors separately
+      if (error.message && error.message.includes('Unauthorized')) {
+        Alert.alert('Authentication Error', error.message);
+      } else {
+        Alert.alert('Upload Failed', error.message || 'Could not upload recording to server');
+      }
+      
       return null;
     } finally {
       setIsUploading(false);
@@ -376,7 +436,7 @@ export default function AudioRecorder() {
     }
     
     try {
-      // First upload to server
+      // First upload to server with JWT
       const serverId = await uploadRecordingToServer(tempRecordingUri, newRecordingName.trim());
       
       // Create a URI for storage in the recordings list
@@ -477,12 +537,16 @@ export default function AudioRecorder() {
       // Find the recording to check if it has a server ID
       const recordingToDelete = recordings.find(item => item.uri === uri);
       
-      // If the recording has a server ID, also delete from server (optional)
-      if (recordingToDelete?.serverId) {
+      // If the recording has a server ID and token is valid, also delete from server (optional)
+      if (recordingToDelete?.serverId && token && !isTokenExpired(token)) {
         try {
           // Add server deletion logic here if your API supports it
-          // await fetch(`${API_URL}/${recordingToDelete.serverId}/`, {
+          // const deleteURL = `${API_URL}/${recordingToDelete.serverId}/`;
+          // await fetch(deleteURL, {
           //   method: 'DELETE',
+          //   headers: {
+          //     'Authorization': `Bearer ${token}`
+          //   }
           // });
         } catch (serverError) {
           console.error('Failed to delete from server:', serverError);
