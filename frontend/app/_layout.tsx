@@ -65,9 +65,7 @@ export default function Layout() {
           name="patientProfile" 
           options={{
             title: 'Patient Profile',
-            headerStyle: {
-              backgroundColor: '#4A90E2',
-            },
+            headerShown: false,
             headerTintColor: '#fff',
           }}
         />

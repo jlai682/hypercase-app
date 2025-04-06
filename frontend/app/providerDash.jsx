@@ -9,6 +9,9 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "./context/AuthContext";
 
+import { SafeAreaView } from 'react-native';
+
+
 
 
 export default function ProviderDash() {
@@ -121,6 +124,7 @@ export default function ProviderDash() {
         method: "POST", 
         headers: {
           'Content-Type': 'application/json',
+          "Authorization": `Bearer ${token}`  // Include JWT token - SURAJ
         },
         body: JSON.stringify({patient_email: patient.email})
       });
@@ -222,14 +226,32 @@ export default function ProviderDash() {
 
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle = {styles.content} >
 
-        <ThemedText style = {styles.title}>Welcome back, Doctor {providerLastName}</ThemedText>
+        <ThemedText style = {styles.title}>Welcome back, </ThemedText>
+        <ThemedText style = {styles.doctorName}>Doctor {providerLastName}</ThemedText>
 
+        <View style={styles.horizontalLine} />
+
+
+        <ThemedText style={styles.sectionTitle}>Your Patients</ThemedText>
+        {patients.length > 0 ? (
+          patients.map((p, index) => (
+            <Pressable key={index} style={styles.patientInfo} onPress = {() => router.push({pathname: '/patientProfile', params: { patientEmail: p.patient.email}})}>
+              <ThemedText>{p.patient.firstName} {p.patient.lastName}</ThemedText>
+              <ThemedText>{p.patient.email}</ThemedText>
+            </Pressable>
+          ))
+        ) : (
+          <ThemedText>No patients found</ThemedText>
+        )}
+
+        <View style={styles.horizontalLine} />
 
         {/* Patient Search Section */}
         <View style={styles.searchContainer}>
+        <ThemedText style={styles.sectionTitle}>Search for Patients</ThemedText>
           <TextInput
             style={styles.searchInput}
             placeholder="Search Patient by Email"
@@ -253,53 +275,73 @@ export default function ProviderDash() {
         )}
 
 
-        <ThemedText style={styles.sectionTitle}>Your Patients</ThemedText>
-        {patients.length > 0 ? (
-          patients.map((p, index) => (
-            <Pressable key={index} style={styles.patientInfo} onPress = {() => router.push({pathname: '/patientProfile', params: { patientEmail: p.patient.email}})}>
-              <ThemedText>Name: {p.patient.firstName} {p.patient.lastName}</ThemedText>
-              <ThemedText>Email: {p.patient.email}</ThemedText>
-            </Pressable>
-          ))
-        ) : (
-          <ThemedText>No patients found</ThemedText>
-        )}
+
 
         
 
         {/* Info sections */}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-
-  container: {
+  safeContainer: {
     flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
     backgroundColor: '#cae7ff',
-    width: '100%',
   },
+  
+  // container: {
+  //   flex: 1,
+  //   justifyContent: 'flex-start',
+  //   alignItems: 'flex-start',
+  //   backgroundColor: '#cae7ff',
+  //   width: '100%',
+  // },
   content: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+    flexGrow: 1,         // Instead of flex: 1
+    alignItems: 'stretch', // Ensures children stretch fully
     width: '100%',
-  },
+    padding: 20,
+  },  
   title: {
-    fontSize: 35,
+    fontSize: 27,
     fontFamily: 'Figtree_400Regular',
     marginBottom: 20,
     color: '#041575',
+    paddingTop:20
   },
+  doctorName: {
+    fontSize: 30,
+    fontFamily: 'Figtree_400Regular',
+    color: '#041575',
+    paddingTop:10
+  },
+  horizontalLine: {
+    height: 1,
+    backgroundColor: '#A9A9A9', // or any color you like
+    width: '100%',
+    marginVertical: 16, // spacing above and below the line
+    alignSelf: 'stretch',
+  },  
   searchContainer: {
     marginBottom: 16,
-    paddingHorizontal: 16,
+    width: '100%'
+
   },
-  patientInfo: { padding: 16, backgroundColor: '#F9F9F9', marginBottom: 16, borderRadius: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  patientInfo: {
+    backgroundColor: '#F9F9F9', 
+    borderRadius: 8,
+    padding: 0,
+    margin: 0,
+    width: '100%'
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: 'Figtree_400Regular',
+    marginBottom: 10,
+    color: '#041575'
+  },
   searchInput: {
     height: 40,
     borderColor: '#E2E8F0',
@@ -307,6 +349,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    width: '100%'
+
   },
   headerContainer: {
     gap: 8,
@@ -319,9 +364,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   patientInfo: {
-    padding: 16,
+    padding:7,
+    marginBottom: 10,
     backgroundColor: '#F9F9F9',
-    marginBottom: 16,
     borderRadius: 8,
   },
   connectButton: {

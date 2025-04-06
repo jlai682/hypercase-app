@@ -134,8 +134,7 @@ def patient_login(request):
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
-@csrf_exempt
-@login_required
+@permission_classes([IsAuthenticated])
 def patient_profile(request):
     patient = Patient.objects.get(user=request.user)
     return render(request, 'profile.html', {'patient': patient})
