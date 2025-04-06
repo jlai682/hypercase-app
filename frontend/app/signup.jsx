@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
-import config from '../config';
-import { router } from 'expo-router';
-import { useLocalSearchParams } from "expo-router";
+import { useAuth } from './context/AuthContext'; // Import the useAuth hook
+import { useLocalSearchParams } from 'expo-router';
 
-import { useRouter, useRoute } from 'expo-router';
-
-
-const signup = () => {
-
-    const { signupType } = useLocalSearchParams();
-
+const Signup = () => {
+    const { onRegister } = useAuth(); // Destructure onRegister from context
+    const { signupType } = useLocalSearchParams(); // Get the signup type from params
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -18,67 +13,19 @@ const signup = () => {
     const [lastName, setLastName] = useState('');
     const [age, setAge] = useState('');
 
-    // Form Validation function
     const validateForm = () => {
-        console.log("Validating form...");
-        if (signupType === "patient") {
-            if (!firstName || !lastName || !email || !password || !age) {
-                Alert.alert('Validation Error', 'Please fill all fields');
-                return false;
-            }
-            if (isNaN(age) || age <= 0) {
-                Alert.alert('Validation Error', 'Please enter a valid age');
-                return false;
-            }
+        if (!firstName || !lastName || !email || !password || (signupType === 'patient' && (!age || isNaN(Number(age))))) {
+            Alert.alert('Validation Error', 'Please fill all fields correctly');
+            return false;
         }
-        else {
-            if (!firstName || !lastName || !email || !password){
-                Alert.alert('Validation Error', 'Please fill all fields');
-                return false;
-            }
-        }
-
-        console.log("Validation passed!");
         return true;
     };
-    
 
     const handleSignup = async () => {
-        console.log("Signup button clicked")
         if (!validateForm()) return;  // Stop if validation fails
-
-        let signupUrl = "" 
-        if (signupType === "patient") {
-            signupUrl = "patientManagement/register/"
-        }
-        else {
-            signupUrl = "providerManagement/register/"
-        }
-
         try {
-            const endpoint = signupType === "patient" 
-            ? `${config.BACKEND_URL}/api/patientManagement/register/`
-            : `${config.BACKEND_URL}/api/providerManagement/register/`;
-
-            const requestBody = signupType === "patient"
-                ? { email, password, firstName, lastName, age: Number(age) }
-                : { email, password, firstName, lastName };
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                router.push('home')
-            } else {
-                Alert.alert('Signup Failed', data.error || 'Please try again.');
-            }
+            console.log("Signup type: ", signupType)
+            await onRegister(email, password, firstName, lastName, signupType, age); // Call onRegister from context with signupType
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -87,7 +34,7 @@ const signup = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>{signupType === "patient" ? 'Patient Signup' : 'Provider Signup'}</Text>
+            <Text style={styles.title}>{signupType === 'patient' ? 'Patient Signup' : 'Provider Signup'}</Text>
             <TextInput
                 style={styles.input}
                 placeholder="First Name"
@@ -100,7 +47,6 @@ const signup = () => {
                 value={lastName}
                 onChangeText={setLastName}
             />
-
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -109,8 +55,7 @@ const signup = () => {
                 keyboardType="email-address"
                 autoCapitalize="none"
             />
-
-{           signupType === "patient" && (
+            {signupType === 'patient' && (
                 <TextInput
                     style={styles.input}
                     placeholder="Age"
@@ -119,7 +64,6 @@ const signup = () => {
                     keyboardType="numeric"
                 />
             )}
-
             <TextInput
                 style={styles.input}
                 placeholder="Password"
@@ -127,7 +71,6 @@ const signup = () => {
                 onChangeText={setPassword}
                 secureTextEntry
             />
-
             <TouchableOpacity style={styles.button} onPress={handleSignup}>
                 <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
@@ -155,7 +98,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 15,
         backgroundColor: '#fff',
-        placeholderTextColor: "rgba(0, 0, 0, 0.4)"
+        placeholderTextColor: "rgba(0, 0, 0, 0.4)",
     },
     button: {
         width: 300,
@@ -173,4 +116,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default signup;
+export default Signup;

@@ -7,6 +7,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 from django.contrib.auth.models import User
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 
 
@@ -15,6 +20,7 @@ from django.contrib.auth.models import User
 @csrf_exempt
 def patient_register(request):
     if request.method == "POST":
+        print("THIS IS RUNNING!!!!")
         try:
             data = json.loads(request.body.decode('utf-8'))  # Parse JSON request
             print("Received data:", data)  # Debugging
@@ -25,13 +31,11 @@ def patient_register(request):
                 if field not in data or not data[field]:
                     return JsonResponse({'error': f'{field} is required'}, status=400)
 
-            # Use email as username
             data['username'] = data['email']
 
             user_form = UserForm(data)
             patient_form = PatientForm(data)
 
-            # Check if forms are valid
             if user_form.is_valid() and patient_form.is_valid():
                 user = user_form.save(commit=False)
                 user.set_password(user_form.cleaned_data['password'])
@@ -41,17 +45,39 @@ def patient_register(request):
                 patient.user = user
                 patient.save()
 
-                login(request, user)
-                return JsonResponse({'message': 'Registration successful'}, status=201)
+                # Create JWT tokens
+                refresh = RefreshToken.for_user(user)
+                access_token = refresh.access_token
 
-            # Log form errors to debug
+                print("Sending response:", {
+                    'message': 'Registration successful',
+                    'access': str(access_token),
+                    'refresh': str(refresh),
+                    'user_id': user.id,
+                    'patient_id': patient.id,
+                    'firstName': patient.firstName,
+                    'lastName': patient.lastName,
+                    'email': user.email
+                })
+
+
+                return JsonResponse({
+                    'message': 'Registration successful',
+                    'access': str(access_token),
+                    'refresh': str(refresh),
+                    'user_id': user.id,
+                    'patient_id': patient.id,
+                    'firstName': patient.firstName,
+                    'lastName': patient.lastName,
+                    'email': user.email
+                }, status=201)
+
             error_details = {
                 'user_form_errors': user_form.errors,
                 'patient_form_errors': patient_form.errors
             }
 
             print("Form validation errors:", error_details)
-
             return JsonResponse({'error': 'Invalid form data', 'details': error_details}, status=400)
 
         except json.JSONDecodeError:
@@ -61,13 +87,11 @@ def patient_register(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-
-
 @csrf_exempt
 def patient_login(request):
     if request.method == "POST":
         try:
-            data = json.loads(request.body.decode('utf-8'))  # Parse JSON request
+            data = json.loads(request.body.decode('utf-8'))
             email = data.get('email')
             password = data.get('password')
 
@@ -78,25 +102,29 @@ def patient_login(request):
 
             if user is not None:
                 login(request, user)
-                
-                # Get the patient object associated with this user
+
                 try:
                     patient = Patient.objects.get(user=user)
-                    # Return patient details with the response
+                    refresh = RefreshToken.for_user(user)
+                    access_token = refresh.access_token
+
                     return JsonResponse({
                         'message': 'Login successful',
-                        'patient_id': patient.id,
+                        'access': str(access_token),
+                        'refresh': str(refresh),
                         'user_id': user.id,
+                        'patient_id': patient.id,
                         'firstName': patient.firstName,
                         'lastName': patient.lastName,
                         'email': user.email
                     }, status=200)
+
                 except Patient.DoesNotExist:
+                    # Return a message if the patient profile doesn't exist
                     return JsonResponse({
-                        'message': 'Login successful but patient profile not found',
-                        'user_id': user.id,
-                        'email': user.email
-                    }, status=200)
+                        'error': 'Patient profile not found'
+                    }, status=404)
+
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=401)
 
@@ -105,8 +133,8 @@ def patient_login(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-@csrf_exempt
-@login_required
+
+@permission_classes([IsAuthenticated])
 def patient_profile(request):
     patient = Patient.objects.get(user=request.user)
     return render(request, 'profile.html', {'patient': patient})

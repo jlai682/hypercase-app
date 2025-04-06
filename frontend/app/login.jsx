@@ -1,92 +1,34 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import config from "../config";
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useAuth } from './context/AuthContext'; // Import the useAuth hook
 
-const login = () => {
-  const { loginType = "patient" } = useLocalSearchParams(); // Default to "patient" if not provided
+const Login = () => {
+  const { loginType = 'patient' } = useLocalSearchParams();
   const router = useRouter();
+  const { onLogin } = useAuth(); // Get onLogin from context
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Validation Error", "Please fill in both email and password");
+      Alert.alert('Validation Error', 'Please fill in both email and password');
       return;
     }
 
     try {
-      const endpoint =
-        loginType === "provider"
-          ? `${config.BACKEND_URL}/api/providerManagement/login/`
-          : `${config.BACKEND_URL}/api/patientManagement/login/`;
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Store user info in AsyncStorage for later use
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        
-        // For patient login, store patient data
-        if (loginType === "patient") {
-          await AsyncStorage.setItem('patientId', data.patient_id?.toString() || '');
-          await AsyncStorage.setItem('userId', data.user_id?.toString() || '');
-          await AsyncStorage.setItem('firstName', data.firstName || '');
-          await AsyncStorage.setItem('lastName', data.lastName || '');
-          await AsyncStorage.setItem('email', data.email || '');
-          await AsyncStorage.setItem('userType', 'patient');
-        } else {
-          // For provider login
-          await AsyncStorage.setItem('providerId', data.provider_id?.toString() || '');
-          await AsyncStorage.setItem('userId', data.user_id?.toString() || '');
-          await AsyncStorage.setItem('email', data.email || '');
-          await AsyncStorage.setItem('userType', 'provider');
-        }
-        
-        console.log('Stored user data:', {
-          patientId: data.patient_id,
-          userId: data.user_id,
-          userType: loginType
-        });
-
-        if (loginType === "provider") {
-          router.push("/providerDash")
-        }
-        else{
-          router.push("/home");
-        }
-      } else {
-        // Login failed, show error message
-        Alert.alert("Login Failed", data.error || "Please try again");
-      }
+      await onLogin(email, password, loginType); // Use onLogin from the context
     } catch (error) {
-      console.error("Login error:", error);
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      console.error('Login error:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>
-          {loginType === "provider" ? "Provider Login" : "Patient Login"}
-        </Text>
+        <Text style={styles.title}>{loginType === 'provider' ? 'Provider Login' : 'Patient Login'}</Text>
 
         <TextInput
           style={[styles.input, styles.inputText]}
@@ -110,13 +52,8 @@ const login = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Register Section */}
       <View style={styles.registerContainer}>
-        <TouchableOpacity
-          onPress={() =>
-            router.push({ pathname: "/signup", params: { signupType: loginType } })
-          }
-        >
+        <TouchableOpacity onPress={() => router.push({ pathname: '/signup', params: { signupType: loginType } })}>
           <Text style={styles.registerText}>
             Don't have an account? <Text style={styles.registerLink}>Register Now</Text>
           </Text>
@@ -129,36 +66,36 @@ const login = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#cae7ff",
-    width: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#cae7ff',
+    width: '100%',
   },
   content: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   registerContainer: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 0,
-    width: "100%",
-    alignItems: "center",
+    width: '100%',
+    alignItems: 'center',
     paddingBottom: 30,
   },
   title: {
     fontSize: 35,
-    fontFamily: "Figtree_400Regular",
+    fontFamily: 'Figtree_400Regular',
     marginBottom: 20,
-    color: "#041575",
+    color: '#041575',
   },
   input: {
-    width: "80%",
+    width: '80%',
     padding: 10,
     borderRadius: 10,
     marginBottom: 15,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   inputText: {
     fontSize: 14,
@@ -166,25 +103,25 @@ const styles = StyleSheet.create({
   button: {
     width: 300,
     height: 50,
-    backgroundColor: "#041575",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#041575',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 10,
     marginVertical: 10,
   },
   buttonText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
-    fontFamily: "Figtree_400Regular",
+    fontFamily: 'Figtree_400Regular',
   },
   registerText: {
     fontSize: 14,
-    color: "#333",
+    color: '#333',
   },
   registerLink: {
-    color: "#0077CC",
-    fontWeight: "bold",
+    color: '#0077CC',
+    fontWeight: 'bold',
   },
 });
 
-export default login;
+export default Login;

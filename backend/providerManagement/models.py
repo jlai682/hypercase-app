@@ -23,3 +23,5 @@ class ProviderPatientConnection(models.Model):
 
     def __str__(self):
         return f"{self.provider} ↔ {self.patient}"
+
+
