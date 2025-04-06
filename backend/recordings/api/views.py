@@ -108,7 +108,7 @@ class RecordingViewSet(ModelViewSet):
                 file_size=audio_file.size,
                 file_type=content_type,
                 # Store the user who uploaded the recording
-                uploaded_by=request.user
+                #uploaded_by=request.user
             )
             
             serializer = self.get_serializer(recording)

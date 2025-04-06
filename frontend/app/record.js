@@ -1,14 +1,70 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
-import { View, Alert, Button } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Alert, Button, Text, StyleSheet } from 'react-native';
 import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
+import { useAuth } from './context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
+  const [patientId, setPatientId] = useState(null);
+  const router = useRouter();
+  
+  // Access auth context to check for valid JWT token
+  const { authState } = useAuth();
+  const isAuthenticated = authState?.authenticated;
+  const token = authState?.token;
 
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+    
+    try {
+      const {exp} = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return exp < currentTime;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return true;
+    }
+  };
+
+  // Check authentication when component mounts or when auth state changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!isAuthenticated || !token || isTokenExpired(token)) {
+        Alert.alert(
+          "Authentication Required", 
+          "You need to be logged in to record voice samples.",
+          [
+            {
+              text: "Login",
+              onPress: () => router.push('/login')
+            }
+          ]
+        );
+      } else {
+        // Try to get patient ID from AsyncStorage
+        try {
+          const storedPatientId = await AsyncStorage.getItem('patientId');
+          if (storedPatientId) {
+            setPatientId(storedPatientId);
+            console.log('Found patient ID in storage:', storedPatientId);
+          }
+        } catch (error) {
+          console.error('Error retrieving patient ID:', error);
+        }
+      }
+    };
+    
+    checkAuth();
+  }, [isAuthenticated, token, router]);
+
+  // Check audio permission when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       if (hasPermission === null) {
@@ -55,9 +111,20 @@ export default function RecordScreen() {
     );
   };
 
+  // Show appropriate UI based on authentication and permissions
+  if (!isAuthenticated || !token || isTokenExpired(token)) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>Please log in to access the recording feature</Text>
+        <Button title="Go to Login" onPress={() => router.push('/login')} />
+      </View>
+    );
+  }
+
   if (hasPermission === false) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.container}>
+        <Text style={styles.message}>Microphone permission is required to record</Text>
         <Button title="I allow this app to record my voice" onPress={checkPermission} />
       </View>
     );
@@ -69,3 +136,18 @@ export default function RecordScreen() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  message: {
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#555',
+  }
+});

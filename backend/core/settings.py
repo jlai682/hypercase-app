@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     'signatures',
     'patientManagement',
     'providerManagement',
-    'recordings'
+    'recordings',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
@@ -106,16 +106,24 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # If using React
-    "http://localhost:8081",  # Add this
-    "http://localhost:19000",  # Expo development server
-    "http://localhost:19006",  # Expo web
-    "exp://localhost:19000",   # Expo client
-    "http://127.0.0.1:19000",  # Expo development server alternative
-    "http://127.0.0.1:19006",  # Expo web alternative
-    "exp://127.0.0.1:19000",    # Expo client alternative
-    "http://172.20.8.4"
+    "http://localhost:3000",     # If using React
+    "http://localhost:8000",     # Django dev server
+    "http://localhost:8081",     # Alternate port
+    "http://localhost:19000",    # Expo development server
+    "http://localhost:19006",    # Expo web
+    "exp://localhost:19000",     # Expo client
+    "http://127.0.0.1:19000",    # Expo development server alternative
+    "http://127.0.0.1:19006",    # Expo web alternative
+    "exp://127.0.0.1:19000",     # Expo client alternative
+    "http://172.20.8.4",         # Example specific IP
+    # Add more IPs as needed for testing on different devices
+    # For example, if testing on a phone connected to your local network:
+    # "http://192.168.1.100:8000",
+    # You may also need to add entries for your machine's actual IP address
 ]
+
+# For development, you might want to allow all origins
+# CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_METHODS = [
     'DELETE',

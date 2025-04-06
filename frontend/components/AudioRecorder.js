@@ -15,8 +15,7 @@ import {
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
-// Import AuthContext for JWT tokens
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "../app/context/AuthContext";
 
 // Backend API URL - Update this with your Django server address
 import config from '../app/config';
@@ -304,6 +303,7 @@ export default function AudioRecorder() {
     }
     
     setIsUploading(true);
+    console.log('Starting upload to server:', API_URL);
     
     try {
       // Web-specific implementation
@@ -330,6 +330,8 @@ export default function AudioRecorder() {
         formData.append('title', name);
         formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
         
+        console.log('Uploading web recording with token:', token.substring(0, 10) + '...');
+        
         // Send the request with JWT token
         const response = await fetch(API_URL, {
           method: 'POST',
@@ -339,16 +341,21 @@ export default function AudioRecorder() {
           body: formData,
         });
         
+        console.log('Upload response status:', response.status);
+        
         if (response.status === 401) {
           throw new Error('Unauthorized: Session expired. Please log in again.');
         }
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorText = await response.text();
+          console.error('Server error response:', errorText);
+          const errorData = JSON.parse(errorText || '{}');
           throw new Error(errorData.error || 'Failed to upload recording');
         }
         
         const responseData = await response.json();
+        console.log('Upload success, received ID:', responseData.id);
         return responseData.id;
       } 
       else {
@@ -356,12 +363,14 @@ export default function AudioRecorder() {
         try {
           // Get file info - wrapped in try/catch to handle potential errors
           const fileInfo = await FileSystem.getInfoAsync(uri);
+          console.log('File info:', fileInfo);
           
           // Create form data for multipart/form-data request
           const formData = new FormData();
           
           // Get file extension
           const fileExtension = uri.split('.').pop();
+          console.log('File extension:', fileExtension);
           
           // Add file to form data
           formData.append('file', {
@@ -374,7 +383,7 @@ export default function AudioRecorder() {
           formData.append('title', name);
           formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
           
-          // Add patient ID if available (this part stays the same)
+          // Try to get patient ID from AsyncStorage
           try {
             const AsyncStorage = require('@react-native-async-storage/async-storage').default;
             const patientId = await AsyncStorage.getItem('patientId');
@@ -382,31 +391,49 @@ export default function AudioRecorder() {
             if (patientId) {
               formData.append('patient_id', patientId);
               console.log('Adding patient ID to recording:', patientId);
+            } else {
+              console.log('No patient ID found in AsyncStorage');
             }
           } catch (error) {
-            console.log('AsyncStorage not available or patient ID not found');
+            console.log('AsyncStorage not available or patient ID not found:', error);
           }
+          
+          console.log('Uploading native recording with token:', token.substring(0, 10) + '...');
           
           // Upload to server with JWT token
           const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-              'Content-Type': 'multipart/form-data',
               'Authorization': `Bearer ${token}`  // Include JWT token
+              // Note: Do NOT set Content-Type for multipart/form-data - the boundary will be set automatically
             },
             body: formData
           });
+          
+          console.log('Upload response status:', response.status);
           
           if (response.status === 401) {
             throw new Error('Unauthorized: Session expired. Please log in again.');
           }
           
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to upload recording');
+            const errorText = await response.text();
+            console.error('Server error response:', errorText);
+            let errorMessage = 'Failed to upload recording';
+            
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+              // If the response isn't valid JSON, use the raw text
+              errorMessage = errorText || errorMessage;
+            }
+            
+            throw new Error(errorMessage);
           }
           
           const responseData = await response.json();
+          console.log('Upload success, received data:', responseData);
           return responseData.id;
         } catch (error) {
           console.error('Native upload error:', error);

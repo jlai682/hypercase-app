@@ -1,6 +1,7 @@
-from django.db import models
 import os
 import uuid
+from django.db import models
+from django.contrib.auth.models import User
 from patientManagement.models import Patient
 
 def get_recording_path(instance, filename):
