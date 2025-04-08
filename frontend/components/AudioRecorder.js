@@ -18,7 +18,7 @@ import * as FileSystem from 'expo-file-system';
 import { useAuth } from "../app/context/AuthContext";
 
 // Backend API URL - Update this with your Django server address
-import config from '../app/config';
+import config from '../config';
 const API_URL = `${config.BACKEND_URL}/api/recordings/upload/`;  
 
 // Web-compatible storage solution using browser localStorage for web

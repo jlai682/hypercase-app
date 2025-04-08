@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Checkbox } from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from "../app/context/AuthContext";
+
 
 // Define API URL at the top level
-const API_URL = 'http://127.0.0.1:8000/api';
+import config from '../config';
 
-// Define Supabase URL - direct to Supabase PostgreSQL
-const SUPABASE_URL = 'db.aylqhupmwovytzulrcgy.supabase.co';
+const API_URL = `${config.BACKEND_URL}/api`;
 
 // Define color palette - more subdued and official
 const COLORS = {
@@ -30,6 +31,33 @@ const ConsentForm = ({ onSubmit, route }) => {
   const [patientId, setPatientId] = useState(null);
   const [existingConsent, setExistingConsent] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Access the token from AuthContext
+  const { authState } = useAuth();
+  const token = authState?.token;
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token || !isValidJWT(token)) {
+      return true;
+    }
+
+    try {
+      const {exp} = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return exp < currentTime;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return true;
+    }
+  };
+
+  // Check if token has a valid JWT format
+  const isValidJWT = (token) => {
+    if (typeof token !== 'string') return false;
+    const parts = token.split('.');
+    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
+  };
 
   // Get patient ID from storage when component mounts
   useEffect(() => {
@@ -87,6 +115,19 @@ const ConsentForm = ({ onSubmit, route }) => {
   }, []);
 
   const handleSubmit = async () => {
+
+    if (!token) {
+      console.error("No token found, authentication required.");
+      Alert.alert('Authentication Required', 'Please log in to upload recordings.');
+      return null;
+    }
+    
+    if (isTokenExpired(token)) {
+      console.error("Token is expired");
+      Alert.alert('Session Expired', 'Your session has expired. Please log in again.');
+      return null;
+    }
+
     // First validate required fields
     if (!isChecked || !signature.trim() || !date.trim()) {
       console.error('Validation failed:', {
@@ -141,7 +182,8 @@ const ConsentForm = ({ onSubmit, route }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(signatureData)
       });

@@ -116,9 +116,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:19006",    # Expo web alternative
     "exp://127.0.0.1:19000",     # Expo client alternative
     "http://172.20.8.4",         # Example specific IP
+    "http://172.20.24.16",       # Example specific IP
     # Add more IPs as needed for testing on different devices
     # For example, if testing on a phone connected to your local network:
-    # "http://192.168.1.100:8000",
     # You may also need to add entries for your machine's actual IP address
 ]
 
