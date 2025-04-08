@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }) => {
                     router.push("/providerDash")
                 }
                 else{
-                    router.push("/home")
+                    router.push("/patientDash" as any)
                 }
             } else {
                 Alert.alert('Signup Failed', data.error || 'Please try again.');
@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }) => {
                     console.log("push to provider dash");
                     router.push('/providerDash');
                 } else {
-                    router.push('/home');
+                    router.push('/patientDash' as any);
                 }
             } else {
                 Alert.alert('Login Failed', data.error || 'Please try again');

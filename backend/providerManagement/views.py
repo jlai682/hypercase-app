@@ -124,6 +124,7 @@ def search_patient_by_email(request):
             if patient:
                 # Only return specific patient fields
                 patient_data = {
+                    'id': patient.id,
                     'firstName': patient.firstName,
                     'lastName': patient.lastName,
                     'age': patient.age,

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'signatures',
     'patientManagement',
     'providerManagement',
+    'surveyManagement', 
     'rest_framework',
     'rest_framework_simplejwt',
 ]
