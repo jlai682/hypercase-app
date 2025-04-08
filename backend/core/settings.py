@@ -42,6 +42,7 @@ ALLOWED_AUDIO_FORMATS = [
     'audio/webm',       # WebM
     'audio/ogg',        # OGG
     'application/ogg',  # OGG (alternative MIME)
+    'audio/x-m4a',
 ]
 
 # Quick-start development settings - unsuitable for production
@@ -117,6 +118,7 @@ CORS_ALLOWED_ORIGINS = [
     "exp://127.0.0.1:19000",     # Expo client alternative
     "http://172.20.8.4",         # Example specific IP
     "http://172.20.24.16",       # Example specific IP
+    "http://192.168.1.160",
     # Add more IPs as needed for testing on different devices
     # For example, if testing on a phone connected to your local network:
     # You may also need to add entries for your machine's actual IP address
