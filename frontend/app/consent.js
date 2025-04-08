@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, Alert 
 import { Checkbox } from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../app/context/AuthContext";
-
+import { useRouter } from 'expo-router';
 
 // Define API URL at the top level
 import config from '../config';
@@ -31,6 +31,7 @@ const ConsentForm = ({ onSubmit, route }) => {
   const [patientId, setPatientId] = useState(null);
   const [existingConsent, setExistingConsent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   // Access the token from AuthContext
   const { authState } = useAuth();
@@ -58,64 +59,101 @@ const ConsentForm = ({ onSubmit, route }) => {
     const parts = token.split('.');
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
+  
+  const fetchExistingConsent = async (id) => {
+    try {
+      console.log('Fetching existing consent for patient ID:', id);
+      const response = await fetch(`${API_URL}/signatures/by_patient/?patient_id=${id}`);
+      
+      if (response.ok) {
+        const consentData = await response.json();
+        console.log('Found existing consent data:', consentData);
+        setExistingConsent(consentData);
+        
+        // Pre-fill form with existing data
+        setIsChecked(consentData.is_checked);
+        setSignature(consentData.digital_signature);
+        setDate(consentData.date);
+      } else {
+        console.log('No existing consent found or error fetching consent');
+      }
+    } catch (error) {
+      console.error('Error fetching existing consent:', error);
+    }
+  };
 
-  // Get patient ID from storage when component mounts
-  useEffect(() => {
-    const fetchPatientInfo = async () => {
-      try {
-        // Get the patient ID directly from AsyncStorage
-        const storedPatientId = await AsyncStorage.getItem('patientId');
-        console.log('Retrieved patientId from storage:', storedPatientId);
+  // Define the fetchPatientInfo function
+  const fetchPatientInfo = async () => {
+    try {
+      setLoading(true);
+      // Get the patient ID directly from AsyncStorage
+      const storedPatientId = await AsyncStorage.getItem('patientId');
+      console.log('Retrieved patientId from storage:', storedPatientId);
+      
+      if (storedPatientId) {
+        setPatientId(storedPatientId);
         
-        if (storedPatientId) {
-          setPatientId(storedPatientId);
-          
-          // Check if patient has existing consent signature
-          fetchExistingConsent(storedPatientId);
-        } else {
-          console.warn('No patient ID found in storage');
-          
-          // Fallback: Get userId and try to get patient data from API
-          const userId = await AsyncStorage.getItem('userId');
-          if (userId) {
-            console.log('Trying to get patient data using userId:', userId);
-            // Implement fallback API call if needed
+        // Check if patient has existing consent signature
+        fetchExistingConsent(storedPatientId);
+      } else {
+        console.warn('No patient ID found in storage');
+        
+        // Fallback: Get userId and try to get patient data from API
+        const userId = await AsyncStorage.getItem('userId');
+        if (userId) {
+          console.log('Trying to get patient data using userId:', userId);
+          // Implement fallback API call if needed
+        }
+      }
+    } catch (error) {
+      console.error('Error retrieving patient info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Define the checkAuth function
+  const checkAuth = async () => {
+    if (!token) {
+      console.error("No token found, authentication required.");
+      Alert.alert(
+        "Authentication Required", 
+        "You need to be logged in to view or submit consent forms.",
+        [
+          {
+            text: "Login",
+            onPress: () => router.push('/login')
           }
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error('Error retrieving patient info:', error);
-        setLoading(false);
-      }
-    };
+        ]
+      );
+      return;
+    }
     
-    const fetchExistingConsent = async (id) => {
-      try {
-        console.log('Fetching existing consent for patient ID:', id);
-        const response = await fetch(`${API_URL}/signatures/by_patient/?patient_id=${id}`);
-        
-        if (response.ok) {
-          const consentData = await response.json();
-          console.log('Found existing consent data:', consentData);
-          setExistingConsent(consentData);
-          
-          // Pre-fill form with existing data
-          setIsChecked(consentData.is_checked);
-          setSignature(consentData.digital_signature);
-          setDate(consentData.date);
-        } else {
-          console.log('No existing consent found or error fetching consent');
-        }
-      } catch (error) {
-        console.error('Error fetching existing consent:', error);
-      }
-    };
+    if (isTokenExpired(token)) {
+      console.error("Token is expired");
+      Alert.alert(
+        "Session Expired", 
+        "Your session has expired. Please log in again.",
+        [
+          {
+            text: "Login",
+            onPress: () => router.push('/login')
+          }
+        ]
+      );
+      return;
+    }
     
-    fetchPatientInfo();
-  }, []);
+    // If we get here, token is valid, proceed with fetching patient info
+    await fetchPatientInfo();
+  };
+
+  // UseEffect to check auth when token changes
+  useEffect(() => {
+    checkAuth();
+  }, [token]);
 
   const handleSubmit = async () => {
-
     if (!token) {
       console.error("No token found, authentication required.");
       Alert.alert('Authentication Required', 'Please log in to upload recordings.');
@@ -231,6 +269,25 @@ const ConsentForm = ({ onSubmit, route }) => {
       alert(`Error submitting signature: ${error.message}`);
     }
   };
+
+  if (!token || isTokenExpired(token)) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>Authentication Required</Text>
+          <Text style={styles.paragraph}>
+            You need to be logged in to view and submit consent forms.
+          </Text>
+          <TouchableOpacity 
+            style={styles.button}
+            onPress={() => router.push('/login')}
+          >
+            <Text style={styles.buttonText}>GO TO LOGIN</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
