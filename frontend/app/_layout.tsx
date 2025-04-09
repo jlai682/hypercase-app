@@ -5,18 +5,20 @@ import AuthGuard from './context/AuthGuard';  // Adjust the path to where you st
 export default function Layout() {
   return (
     <AuthProvider>
-      <AuthGuard>
-        <Stack
-          screenOptions={{
-            headerShown: false, // 👈 This hides headers globally
+      <Stack
+        screenOptions={{
+          headerShown: false, // 👈 This hides headers globally
+        }}
+      >
+        {/* index should not be wrapped with AuthGuard */}
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
           }}
-        >
-          <Stack.Screen
-            name="index"
-            options={{
-              headerShown: false,
-            }}
-          />
+        />
+        {/* Wrap other screens with AuthGuard for protection */}
+        <AuthGuard>
           <Stack.Screen
             name="patientDash"
             options={{
@@ -105,8 +107,8 @@ export default function Layout() {
               headerShown: false,
             }}
           />
-        </Stack>
-      </AuthGuard>
+        </AuthGuard>
+      </Stack>
     </AuthProvider>
   );
 }

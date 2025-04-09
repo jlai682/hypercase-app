@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     'providerManagement',
     'rest_framework',
     'rest_framework_simplejwt',
+    'recordings',
+    'surveyManagement',
 ]
 
 SIMPLE_JWT = {

@@ -8,16 +8,27 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authState.authenticated) {
-      // If not authenticated, redirect to login page
-      router.push('/login');
-    } else {
-      setLoading(false); // If authenticated, allow access to the page
-    }
+    const checkAuth = async () => {
+      if (authState.authenticated === null) {
+        // If auth state is still loading, wait
+        return;
+      }
+
+      if (!authState.authenticated) {
+        // Redirect to login if not authenticated
+        console.log('Redirecting to login...');
+        router.push('/login');  // Ensure this matches the correct route in your routing structure
+      } else {
+        // Once authenticated, stop loading
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
   }, [authState.authenticated, router]);
 
   if (loading) {
-    return null; // Or a loading spinner
+    return;  // Or your preferred loading spinner
   }
 
   return <>{children}</>;
