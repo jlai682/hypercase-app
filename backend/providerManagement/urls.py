@@ -8,6 +8,4 @@ urlpatterns = [
     path('connect/', views.connect_provider_to_patient, name='connect_provider_patient'),
     path("myPatients/", views.get_provider_patient_connections, name="provider_patient_connections"),
     path("providerInfo/", views.get_provider_info, name = "provider_info"),
-
-
 ]

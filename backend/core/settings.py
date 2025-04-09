@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
+
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -69,10 +71,17 @@ INSTALLED_APPS = [
     'signatures',
     'patientManagement',
     'providerManagement',
-    'recordings',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Access token expiry
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),    # Refresh token expiry
+    'ROTATE_REFRESH_TOKENS': True,                   # Rotate refresh tokens after use
+    'BLACKLIST_AFTER_ROTATION': True,                # Blacklist old refresh tokens
+}
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

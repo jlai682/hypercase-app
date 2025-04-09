@@ -11,9 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
-
-
+from rest_framework.response import Response
 
 
 
@@ -134,10 +132,23 @@ def patient_login(request):
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def patient_profile(request):
-    patient = Patient.objects.get(user=request.user)
-    return render(request, 'profile.html', {'patient': patient})
+    try:
+        patient = Patient.objects.get(user=request.user)
+        patient_data = {
+            "firstName": patient.firstName,
+            "lastName": patient.lastName,
+            "age": patient.age,
+            "medical_history": patient.medical_history,
+            "address": patient.address,
+            "phone_number": patient.phone_number,
+            "email": patient.email,
+        }
+        return Response(patient_data)
+    except Patient.DoesNotExist:
+        return Response({"error": "Patient profile not found."}, status=404)
 
 def delete_all_users(request):
     try:
@@ -150,3 +161,4 @@ def delete_all_users(request):
         return JsonResponse({'message': 'All users and associated patient records have been deleted successfully.'}, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
