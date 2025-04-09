@@ -1,4 +1,4 @@
-import React, { useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Pressable, TextInput, Button } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -37,17 +37,22 @@ export default function ProviderDash() {
   const { authState } = useAuth();
   const token = authState.token;
 
+  const { onLogout } = useAuth();
+
   // Check if JWT is expired
   const isTokenExpired = (token) => {
     if (!token || !isValidJWT(token)) {
-      return true};  // Return true if token is invalid
+      return true
+    };  // Return true if token is invalid
     if (!token) return true;
 
-    const {exp} = JSON.parse(atob(token.split('.')[1]));
+    const { exp } = JSON.parse(atob(token.split('.')[1]));
     const currentTime = Date.now() / 1000;
 
     return exp < currentTime;
   }
+
+
 
   // Check if token has a valid JWT format
   const isValidJWT = (token) => {
@@ -55,14 +60,14 @@ export default function ProviderDash() {
     const parts = token.split('.');
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
-  
+
 
   // Handle the search functionality for searching for a patient by email
   const handleSearch = async () => {
-    if (!isValidJWT(token)){
+    if (!isValidJWT(token)) {
       console.log("bad token")
     }
-    else{
+    else {
       console.log("token is valid")
     }
     if (isTokenExpired(token)) {
@@ -70,7 +75,7 @@ export default function ProviderDash() {
       console.log("LSDKFJLDSKFJLSD")
       return;
     }
-    else{
+    else {
       console.log("token is not expired")
     }
     try {
@@ -87,11 +92,11 @@ export default function ProviderDash() {
         },
         body: JSON.stringify({ email: email })
       });
-  
+
       console.log('Response Status:', response.status);
       const data = await response.json();
       console.log('Response Body:', data);
-  
+
       if (response.ok) {
         if (data.patient) {
           setPatient(data.patient);
@@ -114,19 +119,19 @@ export default function ProviderDash() {
   // Fetch provider's list of connected patients on component mount
   useEffect(() => {
     fetchProviderPatients();
-    fetchProviderInfo(); 
+    fetchProviderInfo();
   }, [token]);
 
   // Connect to a patient returned by the search
   const handleConnect = async () => {
-    try{
+    try {
       const response = await fetch(`${config.BACKEND_URL}/api/providerManagement/connect/`, {
-        method: "POST", 
+        method: "POST",
         headers: {
           'Content-Type': 'application/json',
           "Authorization": `Bearer ${token}`  // Include JWT token - SURAJ
         },
-        body: JSON.stringify({patient_email: patient.email})
+        body: JSON.stringify({ patient_email: patient.email })
       });
 
       const data = await response.json();
@@ -135,7 +140,7 @@ export default function ProviderDash() {
       if (response.ok) {
         alert(data.message);
       } else {
-        alert (data.error || 'Failed to connect');
+        alert(data.error || 'Failed to connect');
       }
       fetchProviderPatients();
     } catch (error) {
@@ -146,18 +151,18 @@ export default function ProviderDash() {
 
   // Fetch all patients associated with the current provider 
   const fetchProviderPatients = async () => {
-    if (!isValidJWT(token)){
+    if (!isValidJWT(token)) {
       console.log("bad token")
+      return;
     }
-    else{
+    else {
       console.log("token is valid")
     }
     if (isTokenExpired(token)) {
-      console.error("Token is expired");
-      console.log("LSDKFJLDSKFJLSD")
+      console.log("Token is expired");
       return;
     }
-    else{
+    else {
       console.log("token is not expired")
     }
     try {
@@ -167,7 +172,7 @@ export default function ProviderDash() {
       }
 
       console.log("tokkkkken: ", token);
-  
+
       const response = await fetch(`${config.BACKEND_URL}/api/providerManagement/myPatients/`, {
         method: "GET",
         headers: {
@@ -182,7 +187,7 @@ export default function ProviderDash() {
         // Optionally, you can redirect the user to the login page or clear the stored token
         return;
       }
-  
+
       const data = await response.json();
       if (response.ok) {
         setPatients(data.patients || []);
@@ -197,10 +202,14 @@ export default function ProviderDash() {
   //Fetch the provider's personal information 
   const fetchProviderInfo = async () => {
     if (!token) {
-      console.error("No token found, authentication required.");
+      console.log("No token found, authentication required.");
       return;
     }
-  
+    if (isTokenExpired(token)) {
+      console.log("token is expired");
+      return;
+    }
+
     try {
       const response = await fetch(`${config.BACKEND_URL}/api/providerManagement/providerInfo/`, {
         method: "GET",
@@ -209,10 +218,10 @@ export default function ProviderDash() {
           "Authorization": `Bearer ${token}`,  // Include JWT token
         }
       });
-  
+
       if (response.ok) {
         const data = await response.json();
-        setProviderFirstName(data.provider.firstName);  
+        setProviderFirstName(data.provider.firstName);
         setProviderLastName(data.provider.lastName);
       } else {
         console.error("Failed to fetch provider info:", response.status);
@@ -221,16 +230,16 @@ export default function ProviderDash() {
       console.error("Error fetching provider info:", error);
     }
   };
-  
-  
+
+
 
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <ScrollView contentContainerStyle = {styles.content} >
+      <ScrollView contentContainerStyle={styles.content} >
 
-        <ThemedText style = {styles.title}>Welcome back, </ThemedText>
-        <ThemedText style = {styles.doctorName}>Doctor {providerLastName}</ThemedText>
+        <ThemedText style={styles.title}>Welcome back, </ThemedText>
+        <ThemedText style={styles.doctorName}>Doctor {providerLastName}</ThemedText>
 
         <View style={styles.horizontalLine} />
 
@@ -238,7 +247,7 @@ export default function ProviderDash() {
         <ThemedText style={styles.sectionTitle}>Your Patients</ThemedText>
         {patients.length > 0 ? (
           patients.map((p, index) => (
-            <Pressable key={index} style={styles.patientInfo} onPress = {() => router.push({pathname: '/patientProfile', params: { patientEmail: p.patient.email}})}>
+            <Pressable key={index} style={styles.patientInfo} onPress={() => router.push({ pathname: '/patientProfile', params: { patientEmail: p.patient.email } })}>
               <ThemedText>{p.patient.firstName} {p.patient.lastName}</ThemedText>
               <ThemedText>{p.patient.email}</ThemedText>
             </Pressable>
@@ -251,7 +260,7 @@ export default function ProviderDash() {
 
         {/* Patient Search Section */}
         <View style={styles.searchContainer}>
-        <ThemedText style={styles.sectionTitle}>Search for Patients</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Search for Patients</ThemedText>
           <TextInput
             style={styles.searchInput}
             placeholder="Search Patient by Email"
@@ -260,24 +269,27 @@ export default function ProviderDash() {
           />
           <Button title="Search" onPress={handleSearch} />
         </View>
+        <Button title="Log Out" onPress={onLogout} />
+
 
         {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
         {patient && (
           <View style={styles.patientInfo}>
             <ThemedText>Name: {patient.firstName + " " + patient.lastName}</ThemedText>
             <ThemedText>Email: {patient.email}</ThemedText>
-            
+
             {/* Connect to Patient Button */}
             <Pressable style={styles.connectButton} onPress={handleConnect}>
               <ThemedText style={styles.buttonText}>Connect to Patient</ThemedText>
             </Pressable>
+
           </View>
         )}
 
 
 
 
-        
+
 
         {/* Info sections */}
       </ScrollView>
@@ -290,7 +302,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#cae7ff',
   },
-  
+
   // container: {
   //   flex: 1,
   //   justifyContent: 'flex-start',
@@ -303,19 +315,19 @@ const styles = StyleSheet.create({
     alignItems: 'stretch', // Ensures children stretch fully
     width: '100%',
     padding: 20,
-  },  
+  },
   title: {
     fontSize: 27,
     fontFamily: 'Figtree_400Regular',
     marginBottom: 20,
     color: '#041575',
-    paddingTop:20
+    paddingTop: 20
   },
   doctorName: {
     fontSize: 30,
     fontFamily: 'Figtree_400Regular',
     color: '#041575',
-    paddingTop:10
+    paddingTop: 10
   },
   horizontalLine: {
     height: 1,
@@ -323,14 +335,14 @@ const styles = StyleSheet.create({
     width: '100%',
     marginVertical: 16, // spacing above and below the line
     alignSelf: 'stretch',
-  },  
+  },
   searchContainer: {
     marginBottom: 16,
     width: '100%'
 
   },
   patientInfo: {
-    backgroundColor: '#F9F9F9', 
+    backgroundColor: '#F9F9F9',
     borderRadius: 8,
     padding: 0,
     margin: 0,
@@ -364,7 +376,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   patientInfo: {
-    padding:7,
+    padding: 7,
     marginBottom: 10,
     backgroundColor: '#F9F9F9',
     borderRadius: 8,
@@ -380,5 +392,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
-  
+
 });

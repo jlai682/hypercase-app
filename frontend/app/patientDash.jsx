@@ -1,4 +1,4 @@
-import { StyleSheet, View, Pressable, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Pressable, SafeAreaView, ScrollView, Button, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -37,16 +37,40 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const { authState } = useAuth();
+  const { onLogout } = useAuth();
   const token = authState.token;
 
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState([]);
 
+  const isTokenExpired = (token) => {
+    if (!token || !isValidJWT(token)) {
+      return true
+    };  // Return true if token is invalid
+    if (!token) return true;
+
+    const { exp } = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+
+    return exp < currentTime;
+  }
+
+  const isValidJWT = (token) => {
+    if (typeof token !== 'string') return false;
+    const parts = token.split('.');
+    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
+  };
 
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
+      if (!token) {
+        return;
+      }
+      if (isTokenExpired(token)) {
+        return;
+      }
       console.log("RUNNING");
       try {
         const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
@@ -107,7 +131,7 @@ export default function HomeScreen() {
     router.push(
       {
         pathname: '/survey/previousSurvey',
-        params: 
+        params:
         {
           survey: JSON.stringify(survey)
         }
@@ -175,6 +199,13 @@ export default function HomeScreen() {
             <Text>No completed surveys found for this patient.</Text>
           )}
         </View>
+        <FeatureCard
+          iconName="microphone"
+          title="Voice Recording"
+          description="Record voice samples in a controlled environment for research purposes"
+          onPress={() => router.push('/record')}
+        />
+        <Button title="Log Out" onPress={onLogout} />
       </ScrollView>
     </SafeAreaView>
     /* <ThemedView style={styles.headerContainer}>
@@ -199,12 +230,7 @@ export default function HomeScreen() {
       description="Complete a comprehensive survey about your voice health history"
       onPress={() => router.push('/survey')}
     />
-    <FeatureCard
-      iconName="microphone"
-      title="Voice Recording"
-      description="Record voice samples in a controlled environment for research purposes"
-      onPress={() => router.push('/record')}
-    />
+    
   </ThemedView>
 
   <View style={styles.infoContainer}>
@@ -252,115 +278,114 @@ const styles = StyleSheet.create({
     fontFamily: 'Figtree_400Regular',
     marginBottom: 20,
     color: '#041575',
-    paddingTop: 20
+    paddingTop: 20,
   },
   patientName: {
     fontSize: 30,
     fontFamily: 'Figtree_400Regular',
     color: '#041575',
-    paddingTop: 10
+    paddingTop: 10,
   },
   sectionTitle: {
     fontSize: 20,
     fontFamily: 'Figtree_400Regular',
     marginBottom: 10,
-    color: '#041575'
+    color: '#041575',
   },
-  
-  // mainTitle: {
-  //   fontSize: 36,
-  //   fontWeight: '700',
-  //   color: '#87CFE9',
-  //   textAlign: 'center',
-  // },
-  // subtitle: {
-  //   fontSize: 16,
-  //   textAlign: 'center',
-  //   color: '#475569',
-  //   lineHeight: 24,
-  // },
-  // featuresContainer: {
-  //   gap: 16,
-  //   marginBottom: 32,
-  // },
-  // card: {
-  //   flexDirection: 'row',
-  //   padding: 20,
-  //   borderRadius: 16,
-  //   backgroundColor: '#FFFFFF',
-  //   shadowColor: '#87CFE9',
-  //   shadowOffset: {
-  //     width: 0,
-  //     height: 4,
-  //   },
-  //   shadowOpacity: 0.15,
-  //   shadowRadius: 6,
-  //   elevation: 3,
-  //   gap: 16,
-  //   alignItems: 'center',
-  //   borderWidth: 1,
-  //   borderColor: '#BFDBFE',
-  // },
-  // cardPressed: {
-  //   backgroundColor: '#F8FAFC',
-  //   transform: [{ scale: 0.98 }],
-  // },
-  // iconContainer: {
-  //   width: 56,
-  //   height: 56,
-  //   justifyContent: 'center',
-  //   alignItems: 'center',
-  //   backgroundColor: '#EFF6FF',
-  //   borderRadius: 12,
-  //   borderWidth: 1,
-  //   borderColor: '#BFDBFE',
-  // },
-  // cardContent: {
-  //   flex: 1,
-  //   gap: 6,
-  // },
-  // cardTitle: {
-  //   fontSize: 18,
-  //   fontWeight: '600',
-  //   color: '#87CFE9',
-  // },
-  // cardDescription: {
-  //   fontSize: 14,
-  //   color: '#475569',
-  //   lineHeight: 20,
-  // },
-  // infoContainer: {
-  //   gap: 20,
-  // },
-  // infoSection: {
-  //   padding: 20,
-  //   borderRadius: 16,
-  //   backgroundColor: '#FFFFFF',
-  //   borderWidth: 1,
-  //   borderColor: '#BFDBFE',
-  //   gap: 12,
-  //   shadowColor: '#93C5FD',
-  //   shadowOffset: {
-  //     width: 0,
-  //     height: 2,
-  //   },
-  //   shadowOpacity: 0.1,
-  //   shadowRadius: 4,
-  //   elevation: 2,
-  // },
-  // sectionHeader: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   gap: 12,
-  // },
-  // sectionTitle: {
-  //   fontSize: 20,
-  //   fontWeight: '600',
-  //   color: '#87CFE9',
-  // },
-  // sectionText: {
-  //   fontSize: 15,
-  //   lineHeight: 24,
-  //   color: '#475569',
-  // },
+  mainTitle: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#87CFE9',
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#475569',
+    lineHeight: 24,
+  },
+  featuresContainer: {
+    gap: 16,
+    marginBottom: 32,
+  },
+  card: {
+    flexDirection: 'row',
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#87CFE9',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+    gap: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  cardPressed: {
+    backgroundColor: '#F8FAFC',
+    transform: [{ scale: 0.98 }],
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  cardContent: {
+    flex: 1,
+    gap: 6,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#87CFE9',
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+  },
+  infoContainer: {
+    gap: 20,
+  },
+  infoSection: {
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    gap: 12,
+    shadowColor: '#93C5FD',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#87CFE9',
+  },
+  sectionText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#475569',
+  },
 });
