@@ -3,14 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaVi
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import NavBar from '@/components/navigation/NavBar'
+import { useRouter, useLocalSearchParams } from "expo-router";
 
-interface SectionItemProps {
-  title: string;
-  hasChevron?: boolean;
-  onPress?: () => void;
-}
+// Remove TypeScript interfaces and convert to JSX
 
-const SectionItem: React.FC<SectionItemProps> = ({ title, hasChevron = true, onPress }) => {
+const SectionItem = ({ title, hasChevron = true, onPress }) => {
   return (
     <TouchableOpacity style={styles.sectionItem} onPress={onPress}>
       <Text style={styles.sectionItemText}>{title}</Text>
@@ -19,12 +16,7 @@ const SectionItem: React.FC<SectionItemProps> = ({ title, hasChevron = true, onP
   );
 };
 
-interface SectionProps {
-  title?: string;
-  children: React.ReactNode;
-}
-
-const Section: React.FC<SectionProps> = ({ title, children }) => {
+const Section = ({ title, children }) => {
   return (
     <View style={styles.section}>
       {title && <Text style={styles.sectionTitle}>{title}</Text>}
@@ -36,6 +28,11 @@ const Section: React.FC<SectionProps> = ({ title, children }) => {
 };
 
 export default function ProfileScreen() {
+  const { patient } = useLocalSearchParams();
+  const parsedPatient = patient ? JSON.parse(patient) : null;
+
+  console.log("patient: ", patient);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -47,11 +44,15 @@ export default function ProfileScreen() {
               style={styles.avatar}
             />
           </View>
+          <Text>{parsedPatient.firstName} {parsedPatient.lastName}</Text>
+          <Text>age: {parsedPatient.age}</Text>
+          <Text>email: {parsedPatient.email}</Text>
           <View style={styles.divider} />
           <TouchableOpacity style={styles.editButton}>
             <Text style={styles.editButtonText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
+
 
         <Section title="My Health">
           <SectionItem title="Medical History" onPress={() => console.log('Medical History')} />
@@ -67,7 +68,7 @@ export default function ProfileScreen() {
           <SectionItem title="Language" onPress={() => console.log('Language')} />
         </Section>
       </ScrollView>
-    
+
       <NavBar />
     </SafeAreaView>
   );
