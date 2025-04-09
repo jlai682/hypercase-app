@@ -205,6 +205,8 @@ export default function HomeScreen() {
           description="Record voice samples in a controlled environment for research purposes"
           onPress={() => router.push('/record')}
         />
+        <Button title="profile" onPress={() => router.push('/profile')}>profile</Button>
+
         <Button title="Log Out" onPress={onLogout} />
       </ScrollView>
     </SafeAreaView>

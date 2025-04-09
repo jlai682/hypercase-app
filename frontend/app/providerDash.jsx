@@ -269,7 +269,9 @@ export default function ProviderDash() {
           />
           <Button title="Search" onPress={handleSearch} />
         </View>
+        <Button title = "profile" onPress = {router.push('/profile')}>profile</Button>
         <Button title="Log Out" onPress={onLogout} />
+
 
 
         {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}

@@ -121,7 +121,7 @@ export const AuthProvider = ({ children }) => {
                 if (signupType === "provider") {
                     router.push("/providerDash");
                 } else {
-                    router.push("/patientDash");
+                    router.push("/patientDash" as any);
                 }
             } else {
                 Alert.alert('Signup Failed', data.error || 'Please try again.');
@@ -166,7 +166,7 @@ export const AuthProvider = ({ children }) => {
                 if (loginType === 'provider') {
                     router.push('/providerDash');
                 } else {
-                    router.push('/patientDash');
+                    router.push('/patientDash' as any);
                 }
             } else {
                 Alert.alert('Login Failed', data.error || 'Please try again');
