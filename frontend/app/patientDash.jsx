@@ -37,7 +37,6 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const { authState } = useAuth();
-  const { onLogout } = useAuth();
   const token = authState.token;
 
   const [patient, setPatient] = useState(null);
@@ -168,8 +167,8 @@ export default function HomeScreen() {
           <ActivityIndicator size="large" color="#041575" style={{ marginTop: 40 }} />
         ) : (
           <>
-            <ThemedText style={styles.title}>Welcome back,</ThemedText>
-            <ThemedText style={styles.patientName}>{patient?.firstName}</ThemedText>
+            <ThemedText style={styles.title}>Welcome back, {patient?.firstName}</ThemedText>
+
             <View style={styles.horizontalLine} />
           </>
         )}
@@ -231,16 +230,10 @@ export default function HomeScreen() {
           description="Record voice samples in a controlled environment for research purposes"
           onPress={() => router.push('/record')}
         />
-        <Button title="profile" onPress={() => router.push(
-          {
-            pathname: '/profile',
-            params: {
-              patient: JSON.stringify(patient)
-            }
-          })}>profile</Button>
 
-        <Button title="Log Out" onPress={onLogout} />
       </ScrollView>
+      <NavBar patient={patient}></NavBar>
+
     </SafeAreaView>
     /* <ThemedView style={styles.headerContainer}>
     <ThemedText type="title" style={styles.mainTitle}>
@@ -421,5 +414,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
     color: '#475569',
+  },
+  surveysContainer: {
+    marginBottom: 20,
   },
 });

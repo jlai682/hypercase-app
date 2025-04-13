@@ -1,6 +1,6 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Button, Text, StyleSheet } from 'react-native';
+import { View, Alert, Button, Text, StyleSheet, SafeAreaView } from 'react-native';
 import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { useAuth } from './context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NavBar from '@/components/navigation/NavBar';
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
@@ -131,13 +132,18 @@ export default function RecordScreen() {
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaView style={styles.safeContainer}>
       <AudioRecorder />
-    </SafeAreaProvider>
+      <NavBar style={styles.nav}></NavBar>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#cae7ff',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -149,5 +155,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: '#555',
-  }
+  },
+  nav: {
+    marginBottom: 20,
+  },
 });
