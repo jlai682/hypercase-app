@@ -240,3 +240,42 @@ def get_provider_info(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_provider_by_patient(request):
+    if request.method == "POST":
+        try:
+            if not request.user.is_authenticated:
+                return JsonResponse({"error": "User is not authenticated"}, status=401)
+            
+            patient_user = request.user
+            patient = Patient.objects.get(user=patient_user)
+
+
+            # Find provider-patient connection
+            connection = ProviderPatientConnection.objects.get(patient=patient)
+            
+            if not connection:
+                return JsonResponse({'message': 'No provider connected to this patient'}, status=200)
+            
+            provider = connection.provider
+
+            provider_data = {
+                "firstName": provider.firstName,
+                "lastName": provider.lastName,
+                "email": provider.user.email,
+            }
+
+            return JsonResponse({"provider": provider_data}, status=200)
+
+        except Patient.DoesNotExist:
+            return JsonResponse({'error': 'Patient not found'}, status=404)
+        except ProviderPatientConnection.DoesNotExist:
+            return JsonResponse({'error': 'No provider connected to this patient'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)

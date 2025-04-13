@@ -43,6 +43,7 @@ export default function HomeScreen() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState([]);
+  const [provider, setProvider] = useState(null);
 
   const isTokenExpired = (token) => {
     if (!token || !isValidJWT(token)) {
@@ -71,7 +72,6 @@ export default function HomeScreen() {
       if (isTokenExpired(token)) {
         return;
       }
-      console.log("RUNNING");
       try {
         const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
           method: 'GET',
@@ -101,6 +101,20 @@ export default function HomeScreen() {
         const surveysData = await surveysResponse.json();
         setSurveys(surveysData);
         console.log("Surveys Data received: ", surveysData);
+
+        const providerResponse = await fetch(`${config.BACKEND_URL}/api/providerManagement/get_provider_by_patient/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!providerResponse.ok) throw new Error('Failed to fetch provider data');
+
+        const providerData = await providerResponse.json();
+        setProvider(providerData.provider);
+        console.log("Provider Data receieved: ", providerData);
 
       } catch (error) {
         console.error('Error fetching patient profile or surveys:', error);
@@ -142,6 +156,8 @@ export default function HomeScreen() {
   const sentSurveys = surveys.filter(survey => survey.status === 'sent');
   const completedSurveys = surveys.filter(survey => survey.status === 'completed');
 
+
+  console.log("Provider State in JSX: ", provider);
 
 
   return (
@@ -198,6 +214,16 @@ export default function HomeScreen() {
           ) : (
             <Text>No completed surveys found for this patient.</Text>
           )}
+
+
+          {provider && (
+            <View>
+              <Text>Provider:</Text>
+              <Text>{provider.firstName}</Text>
+            </View>
+          )}
+
+
         </View>
         <FeatureCard
           iconName="microphone"
