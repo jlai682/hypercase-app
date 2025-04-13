@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from signatures.api.urls import sig_router
-from recordings.api.urls import sig_router as recordings_router
+from recordings.urls import router as recordings_router
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static

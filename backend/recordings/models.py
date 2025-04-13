@@ -1,8 +1,9 @@
 import os
 import uuid
 from django.db import models
-from django.contrib.auth.models import User
 from patientManagement.models import Patient
+from providerManagement.models import Provider
+from django.utils import timezone
 
 def get_recording_path(instance, filename):
     """Generate a path for each recording file using the title as filename."""
@@ -82,3 +83,33 @@ class Recording(models.Model):
     def get_all_with_patients(cls):
         """Get all recordings with their associated patients."""
         return cls.objects.select_related('patient').all()
+    
+    def complete_request(self):
+        """Mark the associated request as completed if it exists."""
+        if hasattr(self, 'request') and self.request:
+            self.request.status = 'completed'
+            self.request.response_date = timezone.now()
+            self.request.save()
+    
+class RecordingRequest(models.Model):
+    STATUS_CHOICES = [
+        ('sent', 'Sent'),
+        ('completed', 'Completed'),
+    ]
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    issue_date = models.DateTimeField(auto_now_add=True)
+    response_date = models.DateTimeField(null=True, blank=True)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='recording_requests_received')
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='recording_requests_sent')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='sent')
+    recording = models.OneToOneField(
+        'Recording',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='request'
+    )
+    
+    def __str__(self):
+        return f"{self.title} sent to {self.patient} by {self.provider}"

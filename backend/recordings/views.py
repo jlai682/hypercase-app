@@ -1,12 +1,14 @@
 import os
+from django.utils.timezone import now
 from rest_framework import parsers, status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.conf import settings
-from ..models import Recording
-from .serializers import RecordingSerializer
+from django.utils import timezone
+from .models import Recording, RecordingRequest
+from .serializers import RecordingSerializer, RecordingRequestSerializer, RecordingRequestListSerializer
 from patientManagement.models import Patient
 from providerManagement.models import Provider, ProviderPatientConnection
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -259,3 +261,140 @@ class RecordingViewSet(ModelViewSet):
                 {"error": f"Error processing request: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+        
+    @action(detail=True, methods=['POST'], url_path='complete-request')
+    def complete_request(self, request, pk=None):
+        """Mark a recording as fulfilling a request."""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        try:
+            recording = self.get_object()
+            request_id = request.data.get('request_id')
+            
+            if not request_id:
+                return Response({'error': 'request_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            try:
+                recording_request = RecordingRequest.objects.get(id=request_id)
+                
+                # Check permissions
+                if hasattr(request.user, 'patient'):
+                    patient = Patient.objects.get(user=request.user)
+                    if recording_request.patient.id != patient.id:
+                        return Response(
+                            {"error": "You can only complete your own recording requests"}, 
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                
+                # Link recording to request and mark as completed
+                recording_request.recording = recording
+                recording_request.status = 'completed'
+                recording_request.response_date = timezone.now()
+                recording_request.save()
+                
+                return Response({'status': 'Recording request completed'})
+                
+            except RecordingRequest.DoesNotExist:
+                return Response(
+                    {"error": f"Recording request with id {request_id} does not exist"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_recording_requests_by_patient(request, patient_id):
+    try:
+        # Retrieve all recording requests for the given patient
+        requests = RecordingRequest.objects.filter(patient__id=patient_id)
+
+        # Manually construct the response data
+        request_data = []
+        for req in requests:
+            request_data.append({
+                "id": req.id,
+                "title": req.title,
+                "description": req.description,
+                "issue_date": req.issue_date,
+                "response_date": req.response_date,
+                "provider": req.provider.id,
+                "patient": req.patient.id,
+                "status": req.status,
+                "recording_id": req.recording.id if req.recording else None
+            })
+        
+        return Response(request_data, status=status.HTTP_200_OK)
+
+    except Patient.DoesNotExist:
+        return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_recording_requests_by_authenticated_patient(request):
+    try:
+        # Get the patient associated with the currently authenticated user
+        patient = Patient.objects.get(user=request.user)
+
+        # Retrieve all recording requests for the patient
+        requests = RecordingRequest.objects.filter(patient=patient)
+
+        request_data = []
+        for req in requests:
+            request_data.append({
+                "id": req.id,
+                "title": req.title,
+                "description": req.description,
+                "issue_date": req.issue_date,
+                "response_date": req.response_date,
+                "status": req.status,
+                "provider": req.provider.id,
+                "patient": req.patient.id,
+                "recording_id": req.recording.id if req.recording else None
+            })
+
+        return Response(request_data, status=status.HTTP_200_OK)
+
+    except Patient.DoesNotExist:
+        return Response({"error": "No patient profile found for this user"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_recording_request(request):
+    try:
+        provider = Provider.objects.get(user=request.user)
+        patient_id = request.data.get('patient_id')
+        patient = Patient.objects.get(id=patient_id)
+
+        title = request.data.get('title', 'Untitled Recording Request')
+        description = request.data.get('description', '')
+
+        # Create the RecordingRequest
+        recording_request = RecordingRequest.objects.create(
+            title=title,
+            description=description,
+            patient=patient,
+            provider=provider,
+            status='sent'
+        )
+
+        return Response({
+            'message': 'Recording request created successfully',
+            'id': recording_request.id
+        }, status=status.HTTP_201_CREATED)
+
+    except Patient.DoesNotExist:
+        return Response({'error': 'Patient not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Provider.DoesNotExist:
+        return Response({'error': 'Provider not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print("Recording request creation error:", e)
+        return Response({'error': 'Something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
