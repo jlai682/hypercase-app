@@ -21,6 +21,8 @@ export default function PatientProfile() {
 
   useEffect(() => {
     const fetchPatient = async () => {
+      if (!token || !patientEmail) return;
+
       try {
         const response = await fetch(`${config.BACKEND_URL}/api/providerManagement/search_patient/`, {
           method: 'POST',
