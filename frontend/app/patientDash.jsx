@@ -5,9 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import React, { useEffect, useState } from 'react';
 import config from "../config";
 import { Text } from 'react-native';
-
-
-
+import NavBar from '../components/navigation/NavBar';
 
 import { useAuth } from "./context/AuthContext";
 
@@ -34,6 +32,7 @@ export default function HomeScreen() {
 
   const { authState } = useAuth();
   const token = authState.token;
+  const { onLogout } = useAuth();
 
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
