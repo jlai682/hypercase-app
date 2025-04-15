@@ -13,6 +13,11 @@ from patientManagement.models import Patient
 from providerManagement.models import Provider, ProviderPatientConnection
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
+
 class RecordingViewSet(ModelViewSet):
     queryset = Recording.objects.all()
     serializer_class = RecordingSerializer
@@ -123,65 +128,45 @@ class RecordingViewSet(ModelViewSet):
                 {"error": f"Error processing request: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
     @action(detail=False, methods=['GET'])
     def by_patient(self, request):
         """Get recordings for a specific patient"""
-        # Check if user is authenticated (JWT is valid)
+        # Check if user is authenticated
         if not request.user.is_authenticated:
+            logger.warning("Unauthenticated request to by_patient")
             return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-            
-        patient_id = request.query_params.get('patient_id')
-        if not patient_id:
-            # If no patient_id is provided but user is a patient, show their recordings
-            if hasattr(request.user, 'patient'):
-                try:
-                    patient = Patient.objects.get(user=request.user)
-                    patient_id = patient.id
-                except Patient.DoesNotExist:
-                    return Response(
-                        {"error": "Patient profile not found"}, 
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-            else:
-                return Response(
-                    {"error": "patient_id query parameter is required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
         
         try:
-            # Check if the user is authorized to access these recordings
-            if hasattr(request.user, 'provider'):
-                # For providers, verify they're connected to this patient
-                provider = Provider.objects.get(user=request.user)
-                connection_exists = ProviderPatientConnection.objects.filter(
-                    provider=provider,
-                    patient_id=patient_id
-                ).exists()
-                
-                if not connection_exists:
-                    return Response(
-                        {"error": "You are not authorized to view recordings for this patient"}, 
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            elif hasattr(request.user, 'patient'):
-                # For patients, verify they're accessing their own recordings
-                patient = Patient.objects.get(user=request.user)
-                if str(patient.id) != str(patient_id):
-                    return Response(
-                        {"error": "You can only view your own recordings"}, 
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            
+            patient = Patient.objects.get(user=request.user)
+            patient_id = patient.id
+            logger.info(f"Patient found: {patient_id}")
+        except Patient.DoesNotExist:
+            logger.error(f"No patient profile found for user: {request.user}")
+            return Response(
+                {"error": "Patient profile not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error while retrieving patient: {e}")
+            logger.debug(traceback.format_exc())
+            return Response(
+                {"error": "Internal server error retrieving patient"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        try:
             recordings = Recording.objects.filter(patient_id=patient_id)
+            logger.info(f"Found {recordings.count()} recordings for patient {patient_id}")
             serializer = self.get_serializer(recordings, many=True)
             return Response(serializer.data)
         except Exception as e:
+            logger.error(f"Error while retrieving or serializing recordings: {e}")
+            logger.debug(traceback.format_exc())
             return Response(
-                {"error": str(e)}, 
+                {"error": "Internal server error retrieving recordings"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            
+                
     @action(detail=False, methods=['GET'])
     def provider_patients(self, request):
         """Get recordings for all patients connected to a provider"""

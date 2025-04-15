@@ -5,6 +5,7 @@ from providerManagement.models import Provider
 from django.conf import settings
 from django.utils import timezone
 
+
 class RecordingSerializer(serializers.ModelSerializer):
     """Serializer for Recording model."""
     file_url = serializers.SerializerMethodField()

@@ -45,6 +45,8 @@ class Recording(models.Model):
     )
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
+
+
     
     # The actual audio file
     audio_file = models.FileField(upload_to=get_recording_path)

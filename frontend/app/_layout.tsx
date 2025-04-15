@@ -36,6 +36,16 @@ export default function Layout() {
             }}
           />
           <Stack.Screen
+            name="recordings"
+            options={{
+              title: 'Recordings',
+              headerStyle: {
+                backgroundColor: '#4A90E2',
+              },
+              headerTintColor: '#fff',
+            }}
+          />
+          <Stack.Screen
             name="record"
             options={{
               title: 'Voice Recording',

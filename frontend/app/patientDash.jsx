@@ -44,6 +44,10 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState([]);
   const [provider, setProvider] = useState(null);
+  const [recordingRequests, setRecordingRequests] = useState(null);
+  const [sentRecordings, setSentRecordings] = useState([]);
+  const [completedRecordings, setCompletedRecordings] = useState([]);
+
 
   const isTokenExpired = (token) => {
     if (!token || !isValidJWT(token)) {
@@ -152,9 +156,12 @@ export default function HomeScreen() {
       }
     )
   }
+  
 
   const sentSurveys = surveys.filter(survey => survey.status === 'sent');
   const completedSurveys = surveys.filter(survey => survey.status === 'completed');
+
+
 
 
   console.log("Provider State in JSX: ", provider);
@@ -215,6 +222,23 @@ export default function HomeScreen() {
             <Text>No completed surveys found for this patient.</Text>
           )}
 
+          <View>
+            <Text>Pending Recordings:</Text>
+          </View>
+
+          {/* {recordingRequests && (
+            <View style={styles.surveysContainer}>
+              <Text style={styles.sectionTitle}>Pending Recordings:</Text>
+              {recordingRequests.filter(rec => rec.status === 'sent').map((rec) => (
+                <View key={rec.id} style={styles.surveyItem}>
+                  <Text style={styles.surveyTitle}>{rec.title}</Text>
+                  <Text style={styles.surveyDate}>{new Date(rec.issue_date).toLocaleDateString()}</Text>
+                </View>
+              ))}
+            </View>
+          )} */}
+
+
 
           {provider && (
             <View>
@@ -229,7 +253,12 @@ export default function HomeScreen() {
           iconName="microphone"
           title="Voice Recording"
           description="Record voice samples in a controlled environment for research purposes"
-          onPress={() => router.push('/record')}
+          onPress={() => router.push({
+            pathname: '/recordings',
+            params: {
+              patient: JSON.stringify(patient)
+            }
+          })}
         />
         <Button title="profile" onPress={() => router.push(
           {
@@ -238,6 +267,7 @@ export default function HomeScreen() {
               patient: JSON.stringify(patient)
             }
           })}>profile</Button>
+
 
         <Button title="Log Out" onPress={onLogout} />
       </ScrollView>
