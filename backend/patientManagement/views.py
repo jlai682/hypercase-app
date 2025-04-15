@@ -31,6 +31,10 @@ def patient_register(request):
 
             data['username'] = data['email']
 
+            if not '@' in data['email']:
+                return JsonResponse({'error': 'Please enter a valid email address'}, status=400)
+    
+
             user_form = UserForm(data)
             patient_form = PatientForm(data)
 
@@ -95,6 +99,9 @@ def patient_login(request):
 
             if not email or not password:
                 return JsonResponse({'error': 'Email and password are required'}, status=400)
+            
+            if not '@' in email:
+                return JsonResponse({'error': 'Please enter a valid email address'}, status=400)
 
             user = authenticate(request, username=email, password=password)
 
@@ -122,7 +129,6 @@ def patient_login(request):
                     return JsonResponse({
                         'error': 'Patient profile not found'
                     }, status=404)
-
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=401)
 
