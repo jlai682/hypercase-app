@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, Alert 
 import { Checkbox } from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../app/context/AuthContext";
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Define API URL at the top level
 import config from '../config';
@@ -24,18 +24,20 @@ const COLORS = {
   sectionBg: '#F8FBFF', // Very light blue background for sections
 };
 
-const ConsentForm = ({ onSubmit, route }) => {
+const ConsentForm = ({ onSubmit, signupType }) => {
   const [isChecked, setIsChecked] = useState(false);
   const [signature, setSignature] = useState('');
   const [date, setDate] = useState('');
-  const [patientId, setPatientId] = useState(null);
   const [existingConsent, setExistingConsent] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [patient, setPatient] = useState(null);
 
   // Access the token from AuthContext
   const { authState } = useAuth();
   const token = authState?.token;
+
+  
 
   // Check if JWT is expired
   const isTokenExpired = (token) => {
@@ -59,58 +61,70 @@ const ConsentForm = ({ onSubmit, route }) => {
     const parts = token.split('.');
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
-  
-  const fetchExistingConsent = async (id) => {
-    try {
-      console.log('Fetching existing consent for patient ID:', id);
-      const response = await fetch(`${API_URL}/signatures/by_patient/?patient_id=${id}`);
-      
-      if (response.ok) {
-        const consentData = await response.json();
-        console.log('Found existing consent data:', consentData);
-        setExistingConsent(consentData);
-        
-        // Pre-fill form with existing data
-        setIsChecked(consentData.is_checked);
-        setSignature(consentData.digital_signature);
-        setDate(consentData.date);
-      } else {
-        console.log('No existing consent found or error fetching consent');
-      }
-    } catch (error) {
-      console.error('Error fetching existing consent:', error);
-    }
-  };
 
-  // Define the fetchPatientInfo function
-  const fetchPatientInfo = async () => {
-    try {
-      setLoading(true);
-      // Get the patient ID directly from AsyncStorage
-      const storedPatientId = await AsyncStorage.getItem('patientId');
-      console.log('Retrieved patientId from storage:', storedPatientId);
-      
-      if (storedPatientId) {
-        setPatientId(storedPatientId);
-        
-        // Check if patient has existing consent signature
-        fetchExistingConsent(storedPatientId);
-      } else {
-        console.warn('No patient ID found in storage');
-        
-        // Fallback: Get userId and try to get patient data from API
-        const userId = await AsyncStorage.getItem('userId');
-        if (userId) {
-          console.log('Trying to get patient data using userId:', userId);
-          // Implement fallback API call if needed
-        }
+  useEffect(() => {
+    const fetchPatientProfile = async () => {
+      if (!token || isTokenExpired(token)) {
+        return;
       }
-    } catch (error) {
-      console.error('Error retrieving patient info:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      try {
+        const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch patient data');
+
+        const patientData = await response.json();
+        setPatient(patientData);
+        console.log("Patient Data received: ", patientData);
+
+        // Fetch existing consent based on patient ID
+        // if (patientData?.id) {
+        //   fetchExistingConsent(patientData.id);
+        // }
+      } catch (error) {
+        console.error('Error fetching patient profile:', error);
+      }
+    };
+
+    fetchPatientProfile();
+  }, [token]);
+
+
+  // // Define the fetchPatientInfo function
+  // const fetchPatientInfo = async () => {
+  //   try {
+  //     setLoading(true);
+  //     // Get the patient ID directly from AsyncStorage
+  //     const storedPatientId = await AsyncStorage.getItem('patientId');
+  //     console.log('Retrieved patientId from storage:', storedPatientId);
+      
+  //     if (storedPatientId) {
+  //       setPatientId(storedPatientId);
+        
+  //       // Check if patient has existing consent signature
+  //       fetchExistingConsent(storedPatientId);
+  //     } else {
+  //       console.warn('No patient ID found in storage');
+        
+  //       // Fallback: Get userId and try to get patient data from API
+  //       const userId = await AsyncStorage.getItem('userId');
+  //       if (userId) {
+  //         console.log('Trying to get patient data using userId:', userId);
+  //         // Implement fallback API call if needed
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Error retrieving patient info:', error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // Define the checkAuth function
   const checkAuth = async () => {
@@ -144,8 +158,8 @@ const ConsentForm = ({ onSubmit, route }) => {
       return;
     }
     
-    // If we get here, token is valid, proceed with fetching patient info
-    await fetchPatientInfo();
+    // // If we get here, token is valid, proceed with fetching patient info
+    // await fetchPatientInfo();
   };
 
   // UseEffect to check auth when token changes
@@ -178,26 +192,8 @@ const ConsentForm = ({ onSubmit, route }) => {
     }
     
     // Recheck patient ID from storage just to be sure
-    let id = patientId;
-    if (!id) {
-      try {
-        id = await AsyncStorage.getItem('patientId');
-        if (id) {
-          setPatientId(id);
-        }
-      } catch (err) {
-        console.error('Error retrieving patient ID:', err);
-      }
-    }
-    
-    if (!id) {
-      console.error('Patient ID still not found. Current state:', {
-        patientId: patientId,
-        storedPatientId: await AsyncStorage.getItem('patientId')
-      });
-      alert('Unable to submit consent form: Patient ID not found. Please log in again.');
-      return;
-    }
+    let id = patient.id;
+
   
     // Prepare the form data to match Django model fields
     const signatureData = {
@@ -258,6 +254,12 @@ const ConsentForm = ({ onSubmit, route }) => {
       if (onSubmit) {
         onSubmit(data);
       }
+
+      if (signupType === "provider") {
+        router.push("/providerDash");
+    } else {
+        router.push("/patientDash");
+    }
   
     } catch (error) {
       // Comprehensive error logging

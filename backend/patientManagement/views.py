@@ -151,6 +151,7 @@ def patient_profile(request):
             "address": patient.address,
             "phone_number": patient.phone_number,
             "email": patient.email,
+            "id": patient.id,
         }
         return Response(patient_data)
     except Patient.DoesNotExist:

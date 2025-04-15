@@ -118,14 +118,25 @@ export const AuthProvider = ({ children }) => {
                 await storeToken(data.access, 'access');  // Store access token
                 await storeToken(data.refresh, 'refresh');  // Store refresh token
                 setAuthState({ token: data.access, authenticated: true });
+            
                 if (signupType === "provider") {
-                    router.push("/providerDash");
-                } else {
-                    router.push("/patientDash" as any);
+                    router.push({
+                        pathname: '/providerDash',
+                        params: {
+                            signupType: signupType,
+                        },
+                    });                } else {
+                    router.push({
+                        pathname: '/consent',
+                        params: {
+                            signupType: signupType,
+                        },
+                    });
                 }
             } else {
                 Alert.alert('Signup Failed', data.error || 'Please try again.');
             }
+            
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Something went wrong. Please try again.');
