@@ -167,86 +167,49 @@ class RecordingViewSet(ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
                 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'], url_path='provider-patient-recordings')
     def provider_patients(self, request):
-        """Get recordings for all patients connected to a provider"""
-        # Check if user is authenticated (JWT is valid)
+        """Get previous recordings of a specific patient connected to the provider"""
         if not request.user.is_authenticated:
             return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        patient_id = request.query_params.get('patient_id')
         
-        # If user is a provider, use their ID automatically
-        provider = None
-        provider_id = request.query_params.get('provider_id')
-        
-        if not provider_id and hasattr(request.user, 'provider'):
-            try:
-                provider = Provider.objects.get(user=request.user)
-                provider_id = provider.id
-            except Provider.DoesNotExist:
-                return Response(
-                    {"error": "Provider profile not found"}, 
-                    status=status.HTTP_404_NOT_FOUND
-                )
-        
-        if not provider_id:
-            return Response(
-                {"error": "provider_id query parameter is required"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        # If provider_id is specified but different from authenticated user, verify permissions
-        if hasattr(request.user, 'provider') and provider is None:
-            try:
-                user_provider = Provider.objects.get(user=request.user)
-                if str(user_provider.id) != str(provider_id):
-                    # Only admins should be able to access other providers' patients
-                    if not request.user.is_staff:
-                        return Response(
-                            {"error": "You can only view recordings for your own patients"}, 
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-            except Provider.DoesNotExist:
-                pass
+        if not patient_id:
+            return Response({'error': 'patient_id query parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Get all patients connected to this provider
-            provider_id = int(provider_id)
-            patient_connections = ProviderPatientConnection.objects.filter(provider_id=provider_id)
-            patient_ids = [conn.patient_id for conn in patient_connections]
-            
-            # Get recordings for these patients
-            recordings = Recording.objects.filter(patient_id__in=patient_ids).select_related('patient')
-            serializer = self.get_serializer(recordings, many=True)
-            
-            # Group recordings by patient
-            result = {}
-            for recording in recordings:
-                patient_id = recording.patient_id
-                patient_name = f"{recording.patient.firstName} {recording.patient.lastName}"
-                
-                if patient_id not in result:
-                    result[patient_id] = {
-                        'patient_id': patient_id,
-                        'patient_name': patient_name,
-                        'recordings': []
-                    }
-                
-                result[patient_id]['recordings'].append(serializer.to_representation(recording))
-            
-            return Response(list(result.values()))
-        except ValueError:
+            patient_id = int(patient_id)
+            patient = Patient.objects.get(id=patient_id)
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid patient_id format. Must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Patient.DoesNotExist:
+            return Response({'error': f'Patient with id {patient_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Determine the provider from the authenticated user
+            provider = Provider.objects.get(user=request.user)
+        except Provider.DoesNotExist:
+            return Response({'error': 'Provider profile not found for this user'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Verify that the provider is connected to the patient
+        connection_exists = ProviderPatientConnection.objects.filter(
+            provider=provider,
+            patient=patient
+        ).exists()
+
+        if not connection_exists:
             return Response(
-                {"error": f"Invalid provider_id format: {provider_id}. Must be an integer."}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': 'You are not authorized to access this patient’s recordings'},
+                status=status.HTTP_403_FORBIDDEN
             )
-        except Exception as e:
-            import traceback
-            print(traceback.format_exc())
-            return Response(
-                {"error": f"Error processing request: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        
+
+        # Get recordings for this patient
+        recordings = Recording.objects.filter(patient=patient).order_by('-created_at')  # Optionally order by latest
+        serializer = self.get_serializer(recordings, many=True)
+        return Response(serializer.data)
+
+            
     @action(detail=True, methods=['POST'], url_path='complete-request')
     def complete_request(self, request, pk=None):
         """Mark a recording as fulfilling a request."""

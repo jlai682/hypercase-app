@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import config from '../config';
 import { useAuth } from "./context/AuthContext";
 import { SafeAreaView } from 'react-native';
-import { StyleSheet, View, Pressable, Text, Alert, ScrollView, Modal, TextInput } from 'react-native';
+import { StyleSheet, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { Image } from 'react-native';
 import profile from '../assets/images/profile.png';
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
+
 
 export default function PatientProfile() {
   const { patientEmail } = useLocalSearchParams();
@@ -13,7 +15,8 @@ export default function PatientProfile() {
   const [surveys, setSurveys] = useState([]);
   const [recordingRequests, setRecordingRequests] = useState([]); // State for recording requests
   const [error, setError] = useState(null);
-  
+  const [previousRecordings, setPreviousRecordings] = useState([]);
+
   // For the request modal
   const [modalVisible, setModalVisible] = useState(false);
   const [requestTitle, setRequestTitle] = useState('');
@@ -110,8 +113,35 @@ export default function PatientProfile() {
       }
     };
 
+    const fetchPreviousRecordings = async () => {
+      if (patient) {
+        try {
+          const recordingResponse = await fetch(`${config.BACKEND_URL}/api/recordings/provider-patient-recordings?patient_id=${patient.id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+
+          const recordingData = await recordingResponse.json();
+          if (recordingResponse.ok) {
+            setPreviousRecordings(recordingData);
+            console.log("Recording data: ", recordingData);
+          } else {
+            console.error('Error fetching previous recordings:', recordingData.error);
+          }
+        } catch (error) {
+          console.error('Request failed:', error);
+        }
+      }
+    }
+
     fetchRecordingRequests();
+    fetchPreviousRecordings();
   }, [patient, token]); // Runs when patient data is fetched
+
+
 
   if (error) {
     return (
@@ -135,7 +165,7 @@ export default function PatientProfile() {
       Alert.alert("Error", "Title is required");
       return;
     }
-    
+
     try {
       const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/create/`, {
         method: 'POST',
@@ -149,7 +179,7 @@ export default function PatientProfile() {
           description: "Please record your voice and submit it."
         }),
       });
-      
+
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", "Recording request sent successfully!");
@@ -169,7 +199,7 @@ export default function PatientProfile() {
   // Separate surveys into pending and completed
   const pendingSurveys = surveys.filter(survey => survey.status === 'sent');
   const completedSurveys = surveys.filter(survey => survey.status === 'completed');
-  
+
   // Separate recording requests into pending and completed
   const pendingRecordings = recordingRequests.filter(req => req.status === 'sent');
   const completedRecordings = recordingRequests.filter(req => req.status === 'completed');
@@ -228,6 +258,18 @@ export default function PatientProfile() {
     }
   };
 
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.textContainer}>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.description}>{item.description}</Text>
+      </View>
+      <TouchableOpacity style={styles.playIconButton} onPress={() => playRecording(item.audio_file)}>
+        <Ionicons name="play-circle" size={46} color="#041575" />
+      </TouchableOpacity>
+    </View>
+  )
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -255,6 +297,7 @@ export default function PatientProfile() {
           )}
         </View>
 
+
         {/* Display Completed Surveys */}
         <View style={styles.surveysContainer}>
           <Text style={styles.sectionTitle}>Completed Surveys:</Text>
@@ -281,9 +324,9 @@ export default function PatientProfile() {
           <Text style={styles.sectionTitle}>Pending Recordings:</Text>
           {pendingRecordings.length > 0 ? (
             pendingRecordings.map((request) => (
-              <Pressable 
-                key={request.id} 
-                style={styles.surveyItem} 
+              <Pressable
+                key={request.id}
+                style={styles.surveyItem}
                 onPress={() => handleRecordingRequestPress(request)}
               >
                 <Text style={styles.surveyTitle}>{request.title}</Text>
@@ -297,23 +340,15 @@ export default function PatientProfile() {
 
         {/* Display Completed Recording Requests */}
         <View style={styles.surveysContainer}>
-          <Text style={styles.sectionTitle}>Completed Recordings:</Text>
-          {completedRecordings.length > 0 ? (
-            completedRecordings.map((request) => (
-              <Pressable
-                key={request.id}
-                style={styles.surveyItem}
-                onPress={() => handleRecordingRequestPress(request)}
-              >
-                <Text style={styles.surveyTitle}>{request.title}</Text>
-                <Text style={styles.surveyDate}>
-                  {new Date(request.issue_date).toLocaleDateString()}
-                </Text>
-              </Pressable>
-            ))
-          ) : (
-            <Text>No completed recordings found.</Text>
-          )}
+          <Text style={styles.sectionTitle}>Previous Recordings:</Text>
+
+          <FlatList
+            contentContainerStyle={styles.container}
+            data={previousRecordings}
+            keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
+            ListEmptyComponent={<Text style={styles.emptyText}>No Recordings yet</Text>}
+            renderItem={renderItem}
+          />
         </View>
 
         {/* Button to create a new survey */}
@@ -325,7 +360,7 @@ export default function PatientProfile() {
         <Pressable style={[styles.surveyButton, styles.recordingButton]} onPress={() => setModalVisible(true)}>
           <Text style={styles.surveyButtonText}>Send a New Recording Request</Text>
         </Pressable>
-        
+
         {/* Modal for entering recording request title */}
         <Modal
           animationType="slide"
@@ -370,6 +405,27 @@ const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
     backgroundColor: '#cae7ff',
+  },
+  card: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 15,
+    paddingRight: 15,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  textContainer: {
+    flex: 1,
+    paddingRight: 12,
   },
   content: {
     flexGrow: 1,
@@ -496,4 +552,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  emptyText: {
+    fontSize: 15,
+    fontStyle: 'italic',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 20,
+},
 });
