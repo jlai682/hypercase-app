@@ -33,7 +33,6 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const { authState } = useAuth();
-  const { onLogout } = useAuth();
   const token = authState.token;
 
   const [patient, setPatient] = useState(null);
@@ -169,8 +168,8 @@ export default function HomeScreen() {
           <ActivityIndicator size="large" color="#041575" style={{ marginTop: 40 }} />
         ) : (
           <>
-            <ThemedText style={styles.title}>Welcome back,</ThemedText>
-            <ThemedText style={styles.patientName}>{patient?.firstName}</ThemedText>
+            <ThemedText style={styles.title}>Welcome back, {patient?.firstName}</ThemedText>
+
             <View style={styles.horizontalLine} />
           </>
         )}
@@ -248,6 +247,8 @@ export default function HomeScreen() {
         </Pressable>
 
       </ScrollView>
+      <NavBar patient={patient}></NavBar>
+
     </SafeAreaView>
   
         
@@ -388,6 +389,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Figtree_400Regular',
   },
-
-
 });

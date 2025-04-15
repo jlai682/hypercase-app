@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Pressable, StatusBar } from 'react-native';
+import { StyleSheet, View, ScrollView, Pressable, StatusBar, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import NavBar from '@/components/navigation/NavBar';
 
 const RadioButton = ({ selected, onSelect, label }) => (
   <Pressable 
@@ -37,11 +38,11 @@ export default function SurveyScreen() {
   };
 
   return (
-    <View style={styles.mainContainer}>
+    <SafeAreaView style={styles.safeContainer}>
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ThemedText style={styles.header}>Voice Assessment</ThemedText>
         <ThemedView style={styles.content}>
-          <ThemedText style={styles.header}>Voice Assessment</ThemedText>
           
           <View style={styles.questionCard}>
             <ThemedText style={styles.question}>
@@ -139,17 +140,24 @@ export default function SurveyScreen() {
           </Pressable>
         </ThemedView>
       </ScrollView>
-    </View>
+      <NavBar></NavBar>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
+  safeContainer: {
     flex: 1,
     backgroundColor: '#ADD8E6', // Light blue background
   },
   container: {
     flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: 'Figtree_400Regular',
+    marginBottom: 10,
+    color: '#041575',
   },
   content: {
     padding: 24,

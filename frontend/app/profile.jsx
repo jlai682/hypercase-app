@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import NavBar from '@/components/navigation/NavBar'
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useAuth } from "./context/AuthContext";
 
 // Remove TypeScript interfaces and convert to JSX
 
@@ -30,6 +31,7 @@ const Section = ({ title, children }) => {
 export default function ProfileScreen() {
   const { patient } = useLocalSearchParams();
   const parsedPatient = patient ? JSON.parse(patient) : null;
+  const { onLogout } = useAuth();
 
   console.log("patient: ", patient);
 
@@ -64,8 +66,8 @@ export default function ProfileScreen() {
           <SectionItem title="Consent Form" onPress={() => console.log('Consent Form')} />
         </Section>
 
-        <Section title="Preferences">
-          <SectionItem title="Language" onPress={() => console.log('Language')} />
+        <Section title="Others">
+          <SectionItem title="Log Out" onPress={onLogout} />
         </Section>
       </ScrollView>
 
