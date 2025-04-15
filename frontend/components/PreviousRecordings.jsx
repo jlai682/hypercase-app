@@ -3,67 +3,24 @@ import {
     StyleSheet,
     View,
     Text,
-    ScrollView,
     FlatList,
-    Button,
+    TouchableOpacity,
+    Alert,
+    Platform,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import config from '../config'; // Update based on your structure
+import config from '../config';
 import { useAuth } from '../app/context/AuthContext';
-
-
-const RecordingList = ({ recordings }) => {
-    const [sound, setSound] = useState(null);
-
-    const playSound = async (url) => {
-        try {
-            if (sound) {
-                await sound.stopAsync();
-                await sound.unloadAsync();
-                setSound(null);
-            }
-
-            const { sound: newSound } = await Audio.Sound.createAsync({ uri: url });
-            setSound(newSound);
-            await newSound.playAsync();
-        } catch (error) {
-            console.error("Error playing sound", error);
-        }
-    };
-
-    const renderItem = ({ item }) => (
-        <View style={styles.card}>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.desc}>{item.description}</Text>
-            <Button title="Play" onPress={() => playSound(item.audio_file)} />
-        </View>
-    );
-
-    return (
-        <FlatList
-            data={recordings}
-            keyExtractor={(item, index) => (item?.id ? item.id.toString() : index.toString())}
-            renderItem={renderItem}
-        />
-    );
-};
-
+import { Ionicons } from '@expo/vector-icons';
 
 const PreviousRecordings = () => {
     const [recordings, setRecordings] = useState([]);
-
+    const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
     const { authState } = useAuth();
     const token = authState.token;
 
-    console.log("RECORDINGS: ", recordings);
-
-
-    // Check if JWT is expired
     const isTokenExpired = (token) => {
-        if (!token || !isValidJWT(token)) {
-            return true;
-        }
-
+        if (!token || !isValidJWT(token)) return true;
         try {
             const { exp } = JSON.parse(atob(token.split('.')[1]));
             const currentTime = Date.now() / 1000;
@@ -74,32 +31,16 @@ const PreviousRecordings = () => {
         }
     };
 
-
-
-    // Check if token has a valid JWT format
     const isValidJWT = (token) => {
         if (typeof token !== 'string') return false;
         const parts = token.split('.');
         return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
     };
 
-
-
     useEffect(() => {
         const fetchData = async () => {
-
             if (!token || isTokenExpired(token)) return;
-
             try {
-                const profileRes = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                if (!profileRes.ok) throw new Error("Failed to get profile");
-
                 const recordingRes = await fetch(`${config.BACKEND_URL}/api/recordings/by_patient/`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -119,49 +60,31 @@ const PreviousRecordings = () => {
         fetchData();
     }, []);
 
-
     const playRecording = async (uri) => {
         try {
-            // Stop currently playing recording if any
             if (currentlyPlaying) {
                 await currentlyPlaying.sound.stopAsync();
                 setCurrentlyPlaying(null);
             }
 
             if (Platform.OS === 'web') {
-                // Web implementation
-                let audioUrl = uri;
-
-                // Create a new HTML5 Audio element
-                const newSound = new Audio(audioUrl);
-
-                // Create a wrapper object with compatible interface for our state
+                const audio = new window.Audio(uri);
                 const soundWrapper = {
                     stopAsync: () => {
-                        newSound.pause();
-                        newSound.currentTime = 0;
+                        audio.pause();
+                        audio.currentTime = 0;
                         return Promise.resolve();
-                    }
+                    },
                 };
-
-                // Set up ended event
-                newSound.onended = () => {
-                    setCurrentlyPlaying(null);
-                };
-
-                // Start playing
-                newSound.play();
-
+                audio.onended = () => setCurrentlyPlaying(null);
+                audio.play();
                 setCurrentlyPlaying({ uri, sound: soundWrapper });
             } else {
-                // Native implementation using Expo AV
                 const { sound: newSound } = await Audio.Sound.createAsync(
                     { uri },
                     { shouldPlay: true }
                 );
-
                 setCurrentlyPlaying({ uri, sound: newSound });
-
                 newSound.setOnPlaybackStatusUpdate((status) => {
                     if (status.didJustFinish) {
                         setCurrentlyPlaying(null);
@@ -174,30 +97,96 @@ const PreviousRecordings = () => {
         }
     };
 
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <View style={styles.textContainer}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.description}>{item.description}</Text>
+            </View>
+            <TouchableOpacity style={styles.playIconButton} onPress={() => playRecording(item.audio_file)}>
+                <Ionicons name="play-circle" size={46} color="#041575" />
+            </TouchableOpacity>
+        </View>
+    );
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Previous Recordings</Text>
-            {recordings && recordings.length > 0 ? (
-                <RecordingList recordings={recordings} />
-            ) : (
-                <Text>Loading...</Text>
-            )}
-            {recordings.length === 0 && (
-                <Text>No Recordings yet</Text>
-            )}
-        </View>
+        <FlatList
+            contentContainerStyle={styles.container}
+            data={recordings}
+            keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
+            ListHeaderComponent={<Text style={styles.header}>Previous Recordings</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>No Recordings yet</Text>}
+            renderItem={renderItem}
+        />
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        padding: 16,
+        paddingVertical: 24,
+        paddingHorizontal: 16,
     },
     header: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 20,
+        color: '#041575',
+    },
+    playIconButton: {
+        marginTop: 16,
+        alignSelf: 'flex-start',
+    },
+    card: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        paddingTop: 5,
+        paddingBottom: 5,
+        paddingLeft: 15,
+        paddingRight: 15,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 3,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    textContainer: {
+        flex: 1,
+        paddingRight: 12,
+    },
+    title: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#041575',
+    },
+    description: {
+        fontSize: 12,
+        color: '#4B5563',
+        marginTop: 6,
+        lineHeight: 15,
+    },
+    button: {
+        marginTop: 20,
+        backgroundColor: '#041575',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    emptyText: {
+        fontSize: 15,
+        fontStyle: 'italic',
+        color: '#9CA3AF',
+        textAlign: 'center',
+        marginTop: 20,
     },
 });
 

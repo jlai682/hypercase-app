@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -6,14 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 
-
-const RecordingRequests = ({ sentRequests, completedRequests, onSelectRequest, patient }) => {
-
-  const [expandedId, setExpandedId] = useState(null);
-    const router = useRouter();
-  
+const RecordingRequests = ({ sentRequests, completedRequests, patient }) => {
+  const router = useRouter();
 
   let parsedSentRequests = [];
 
@@ -23,45 +19,30 @@ const RecordingRequests = ({ sentRequests, completedRequests, onSelectRequest, p
     console.error('Could not parse sentRequests:', error);
   }
 
-  const toggleDescription = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Pending Recordings</Text>
       {parsedSentRequests.length > 0 ? (
         parsedSentRequests.map((request) => (
-          <View key={request.id} style={styles.requestItem}>
+          <View key={request.id} style={styles.card}>
+            <Text style={styles.title}>{request.title}</Text>
+            <Text style={styles.description}>{request.description}</Text>
             <TouchableOpacity
-              onPress={() => {
-                toggleDescription(request.id);
-                onSelectRequest(request);
-              }}
+              onPress={() => router.push({
+                pathname: '/record',
+                params: {
+                  request: JSON.stringify(request),
+                  patient: patient,
+                },
+              })}
+              style={styles.button}
             >
-              <Text style={styles.title}>{request.title}</Text>
+              <Text style={styles.buttonText}>Record Now</Text>
             </TouchableOpacity>
-            {expandedId === request.id && (
-              <>
-                <Text style={styles.description}>{request.description}</Text>
-                <TouchableOpacity
-                  onPress={() => router.push({
-                    pathname: '/record',
-                    params: {
-                        request: JSON.stringify(request),
-                        patient: patient
-                    }
-                  })}
-                  style={styles.recordNowButton}
-                >
-                  <Text style={styles.recordNowText}>Record Now</Text>
-                </TouchableOpacity>
-              </>
-            )}
           </View>
         ))
       ) : (
-        <Text style={styles.empty}>No sent requests.</Text>
+        <Text style={styles.emptyText}>No sent requests.</Text>
       )}
     </ScrollView>
   );
@@ -71,41 +52,55 @@ export default RecordingRequests;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
   },
   header: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 20,
+    color: '#041575',
   },
-  requestItem: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
   },
   title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#041575',
+  },
+  description: {
+    fontSize: 15,
+    color: '#4B5563',
+    marginTop: 12,
+    lineHeight: 22,
+  },
+  button: {
+    marginTop: 20,
+    backgroundColor: '#041575',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  description: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#555',
-  },
-  empty: {
+  emptyText: {
+    fontSize: 15,
     fontStyle: 'italic',
-    color: '#888',
-  },
-  recordNowButton: {
-    marginTop: 10,
-    paddingVertical: 10,
-    backgroundColor: '#4A90E2',
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  recordNowText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });

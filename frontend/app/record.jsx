@@ -433,9 +433,11 @@ const styles = StyleSheet.create({
     mainContent: {
         flex: 1,
         padding: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     timer: {
-        fontSize: 48,
+        fontSize: 60,
         fontWeight: '300',
         textAlign: 'center',
         color: '#4A90E2',

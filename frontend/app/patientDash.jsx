@@ -1,17 +1,13 @@
 import { StyleSheet, View, Pressable, SafeAreaView, ScrollView, Button, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import NavBar from '@/components/navigation/NavBar';
 import React, { useEffect, useState } from 'react';
 import config from "../config";
 import { Text } from 'react-native';
 
 
 
-import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from "./context/AuthContext";
 
@@ -44,9 +40,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState([]);
   const [provider, setProvider] = useState(null);
-  const [recordingRequests, setRecordingRequests] = useState(null);
-  const [sentRecordings, setSentRecordings] = useState([]);
-  const [completedRecordings, setCompletedRecordings] = useState([]);
+
 
 
   const isTokenExpired = (token) => {
@@ -156,7 +150,7 @@ export default function HomeScreen() {
       }
     )
   }
-  
+
 
   const sentSurveys = surveys.filter(survey => survey.status === 'sent');
   const completedSurveys = surveys.filter(survey => survey.status === 'completed');
@@ -181,6 +175,13 @@ export default function HomeScreen() {
           </>
         )}
 
+        {provider && (
+
+          <View style={styles.providerCard}>
+            <Text style={styles.sectionTitle}>Your Provider:</Text>
+            <Text style={styles.providerName}>Dr. {provider.lastName}</Text>
+          </View>)}
+
         {/* Sent Surveys Section */}
         <View style={styles.surveysContainer}>
           <Text style={styles.sectionTitle}>Pending Surveys:</Text>
@@ -198,7 +199,7 @@ export default function HomeScreen() {
               </Pressable>
             ))
           ) : (
-            <Text>No pending surveys found for this patient.</Text>
+            <Text style = {styles.surveyDate}>No pending surveys found for this patient.</Text>
           )}
         </View>
 
@@ -222,37 +223,12 @@ export default function HomeScreen() {
             <Text>No completed surveys found for this patient.</Text>
           )}
 
-          <View>
-            <Text>Pending Recordings:</Text>
-          </View>
-
-          {/* {recordingRequests && (
-            <View style={styles.surveysContainer}>
-              <Text style={styles.sectionTitle}>Pending Recordings:</Text>
-              {recordingRequests.filter(rec => rec.status === 'sent').map((rec) => (
-                <View key={rec.id} style={styles.surveyItem}>
-                  <Text style={styles.surveyTitle}>{rec.title}</Text>
-                  <Text style={styles.surveyDate}>{new Date(rec.issue_date).toLocaleDateString()}</Text>
-                </View>
-              ))}
-            </View>
-          )} */}
-
-
-
-          {provider && (
-            <View>
-              <Text>Provider:</Text>
-              <Text>{provider.firstName}</Text>
-            </View>
-          )}
 
 
         </View>
         <FeatureCard
           iconName="microphone"
-          title="Voice Recording"
-          description="Record voice samples in a controlled environment for research purposes"
+          title="Recordings"
           onPress={() => router.push({
             pathname: '/recordings',
             params: {
@@ -260,69 +236,21 @@ export default function HomeScreen() {
             }
           })}
         />
-        <Button title="profile" onPress={() => router.push(
-          {
-            pathname: '/profile',
-            params: {
-              patient: JSON.stringify(patient)
-            }
-          })}>profile</Button>
+        <Pressable style={styles.button} onPress={() => router.push({
+          pathname: '/profile',
+          params: { patient: JSON.stringify(patient) }
+        })}>
+          <Text style={styles.buttonText}>Profile</Text>
+        </Pressable>
 
+        <Pressable style={styles.button} onPress={onLogout}>
+          <Text style={styles.buttonText}>Log Out</Text>
+        </Pressable>
 
-        <Button title="Log Out" onPress={onLogout} />
       </ScrollView>
     </SafeAreaView>
-    /* <ThemedView style={styles.headerContainer}>
-    <ThemedText type="title" style={styles.mainTitle}>
-      AcoustiCare
-    </ThemedText>
-    <ThemedText style={styles.subtitle}>
-      Contributing to voice health research through patient participation
-    </ThemedText>
-  </ThemedView>
-
-  <ThemedView style={styles.featuresContainer}>
-    <FeatureCard
-      iconName="file-sign"
-      title="Consent Management"
-      description="Secure digital consent process for study participation"
-      onPress={() => router.push('/consent')}
-    />
-    <FeatureCard
-      iconName="file-document-outline"
-      title="Patient Survey"
-      description="Complete a comprehensive survey about your voice health history"
-      onPress={() => router.push('/survey')}
-    />
-    
-  </ThemedView>
-
-  <View style={styles.infoContainer}>
-    <View style={styles.infoSection}>
-      <View style={styles.sectionHeader}>
-        <MaterialCommunityIcons name="information" size={24} color="#60A5FA" />
-        <ThemedText style={styles.sectionTitle}>About This Study</ThemedText>
-      </View>
-      <ThemedText style={styles.sectionText}>
-        This application is designed to collect voice samples and relevant health information 
-        from participants. Your contribution helps advance our understanding of voice-related 
-        health conditions and potential treatments.
-      </ThemedText>
-    </View>
-
-    <View style={styles.infoSection}>
-      <View style={styles.sectionHeader}>
-        <MaterialCommunityIcons name="play-circle" size={24} color="#60A5FA" />
-        <ThemedText style={styles.sectionTitle}>Getting Started</ThemedText>
-      </View>
-      <ThemedText style={styles.sectionText}>
-        Begin by reviewing and signing the consent form. Then complete the voice health survey 
-        before proceeding to record your voice samples.
-      </ThemedText>
-    </View>
-  </View>
-   */
-
+  
+        
   );
 }
 
@@ -332,124 +260,134 @@ const styles = StyleSheet.create({
     backgroundColor: '#cae7ff',
   },
   content: {
-    flexGrow: 1,
-    alignItems: 'stretch',
-    width: '100%',
     padding: 20,
+    paddingBottom: 40,
   },
   title: {
-    fontSize: 27,
-    fontFamily: 'Figtree_400Regular',
-    marginBottom: 20,
+    fontSize: 22,
+    fontWeight: '600',
     color: '#041575',
-    paddingTop: 20,
+    marginTop: 10,
+    fontFamily: 'Figtree_400Regular',
   },
   patientName: {
-    fontSize: 30,
-    fontFamily: 'Figtree_400Regular',
+    fontSize: 26,
+    fontWeight: '700',
     color: '#041575',
-    paddingTop: 10,
+    marginBottom: 10,
+    fontFamily: 'Figtree_400Bold',
+  },
+  horizontalLine: {
+    height: 2,
+    backgroundColor: '#87CFE9',
+    marginVertical: 15,
+    borderRadius: 5,
+  },
+  surveysContainer: {
+    marginBottom: 25,
+    padding: 15,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Figtree_400Regular',
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '600',
     color: '#041575',
+    marginBottom: 10,
+    fontFamily: 'Figtree_400Bold',
   },
-  mainTitle: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#87CFE9',
-    textAlign: 'center',
+  surveyButton: {
+    backgroundColor: '#e8f4ff',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
   },
-  subtitle: {
+  surveyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  surveyTitle: {
     fontSize: 16,
-    textAlign: 'center',
-    color: '#475569',
-    lineHeight: 24,
+    fontWeight: '500',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
   },
-  featuresContainer: {
-    gap: 16,
-    marginBottom: 32,
+  surveyDate: {
+    fontSize: 14,
+    color: '#555',
+    fontFamily: 'Figtree_400Regular',
   },
   card: {
     flexDirection: 'row',
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#87CFE9',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-    gap: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    padding: 10,
+    borderRadius: 12,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardPressed: {
-    backgroundColor: '#F8FAFC',
-    transform: [{ scale: 0.98 }],
+    backgroundColor: '#f0f8ff',
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    marginRight: 16,
   },
   cardContent: {
     flex: 1,
-    gap: 6,
+    justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#87CFE9',
+    color: '#041575',
+    fontFamily: 'Figtree_400Bold',
   },
   cardDescription: {
     fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
+    color: '#555',
+    fontFamily: 'Figtree_400Regular',
   },
-  infoContainer: {
-    gap: 20,
+  providerCard: {
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 12,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 3,
   },
-  infoSection: {
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    gap: 12,
-    shadowColor: '#93C5FD',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
+  providerName: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#87CFE9',
+    color: '#041575',
+    marginBottom: 4,
+    fontFamily: 'Figtree_400Regular',
   },
-  sectionText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#475569',
+  button: {
+    marginTop: 20,
+    backgroundColor: '#041575',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
   },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Figtree_400Regular',
+  },
+
+
 });

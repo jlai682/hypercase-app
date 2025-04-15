@@ -1,11 +1,10 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Button, Text, StyleSheet } from 'react-native';
+import { View, Alert, Text, StyleSheet, Platform, TouchableOpacity, SafeAreaView} from 'react-native';
 import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Platform } from 'react-native';
 import { useAuth } from './context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RecordingRequests from '../components/RecordingRequests';
@@ -16,19 +15,13 @@ export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
   const router = useRouter();
   const [selectedRequest, setSelectedRequest] = useState(null);
-
-
   const { patient } = useLocalSearchParams();
-
-
-  // Access auth context to check for valid JWT token
   const { authState } = useAuth();
   const token = authState.token;
 
   const [recordingRequests, setRecordingRequests] = useState(null);
   const [sentRecordings, setSentRecordings] = useState([]);
   const [completedRecordings, setCompletedRecordings] = useState([]);
-
 
   useEffect(() => {
     const fetchRecordingInfo = async () => {
@@ -48,12 +41,13 @@ export default function RecordScreen() {
         console.error('Error fetching recordings:', error);
       }
     };
+
     if (token) {
       fetchRecordingInfo();
     } else {
       console.log("no token found");
     }
-  }, [token])
+  }, [token]);
 
   useEffect(() => {
     if (!recordingRequests) return;
@@ -65,9 +59,6 @@ export default function RecordScreen() {
     setCompletedRecordings(completed);
   }, [recordingRequests]);
 
-
-
-  // Check if JWT is expired
   const isTokenExpired = (token) => {
     if (!token) return true;
 
@@ -81,7 +72,6 @@ export default function RecordScreen() {
     }
   };
 
-  // Check audio permission when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       if (hasPermission === null) {
@@ -92,7 +82,6 @@ export default function RecordScreen() {
 
   const checkPermission = () => {
     if (Platform.OS === 'web') {
-      // For web, we'll check permissions when the user tries to record
       setHasPermission(true);
       return;
     }
@@ -128,14 +117,13 @@ export default function RecordScreen() {
     );
   };
 
-
-
-  // Show appropriate UI based on authentication and permissions
   if (!token || isTokenExpired(token)) {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>Please log in to access the recording feature</Text>
-        <Button title="Go to Login" onPress={() => router.push('/login')} />
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
+          <Text style={styles.buttonText}>Go to Login</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -144,13 +132,14 @@ export default function RecordScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>Microphone permission is required to record</Text>
-        <Button title="I allow this app to record my voice" onPress={checkPermission} />
+        <TouchableOpacity style={styles.button} onPress={checkPermission}>
+          <Text style={styles.buttonText}>I allow this app to record my voice</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   const handleSelectRequest = (request) => {
-    // If the request is clicked again, reset to null
     if (selectedRequest && selectedRequest.id === request.id) {
       setSelectedRequest(null);
     } else {
@@ -159,7 +148,7 @@ export default function RecordScreen() {
   };
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaView style={styles.safeContainer}>
       <RecordingRequests
         sentRequests={JSON.stringify(sentRecordings)}
         completedRequests={JSON.stringify(completedRecordings)}
@@ -167,21 +156,69 @@ export default function RecordScreen() {
         patient={patient}
       />
       <PreviousRecordings />
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#cae7ff',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    backgroundColor: '#F9FAFB',
   },
   message: {
     fontSize: 18,
+    lineHeight: 26,
     textAlign: 'center',
+    marginBottom: 24,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
     marginBottom: 20,
-    color: '#555',
-  }
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
+    width: '100%',
+    maxWidth: 400,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#111827',
+  },
+  button: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 10,
+    marginTop: 12,
+    width: '100%',
+    maxWidth: 300,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
 });

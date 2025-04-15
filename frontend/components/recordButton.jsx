@@ -22,7 +22,7 @@ const RecordButton = ({ isRecording, stopRecording, startRecording }) => {
             >
                 <Ionicons
                     name="mic"
-                    size={40}
+                    size={75}
                     color={isRecording ? "#ff4444" : "#4A90E2"}
                 />
             </TouchableOpacity>
@@ -41,9 +41,9 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     recordButton: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
         backgroundColor: '#EDF2F7',
         justifyContent: 'center',
         alignItems: 'center',
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     },
     recordingStatus: {
         color: '#666',
-        fontSize: 14,
+        fontSize: 17,
     },
 })
 
