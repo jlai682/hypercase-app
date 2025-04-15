@@ -6,6 +6,7 @@ import {
     StyleSheet,
     SafeAreaView,
     Button,
+    TextInput,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import config from '../../config';
@@ -27,6 +28,18 @@ export default function SelectQuestions() {
 
     const [selectedMC, setSelectedMC] = useState([]);
     const [selectedOpen, setSelectedOpen] = useState([]);
+
+    const [searchText, setSearchText] = useState('');
+
+    const filteredOpenQuestions = openQuestions.filter((q) =>
+        q.question_description.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    const filteredMCQuestions = multipleChoiceQuestions.filter((q) =>
+        q.question_description.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+
 
     const toggleSelect = (type, question) => {
         const selected = type === 'open' ? selectedOpen : selectedMC;
@@ -76,8 +89,15 @@ export default function SelectQuestions() {
             <ScrollView contentContainerStyle={styles.container}>
                 <Text style={styles.pageTitle}>Select Questions</Text>
 
+                <TextInput
+                    style={styles.searchBar}
+                    placeholder="Search questions..."
+                    value={searchText}
+                    onChangeText={setSearchText}
+                />
+
                 <Text style={styles.heading}>Open-ended Questions</Text>
-                {openQuestions.map((question) => (
+                {filteredOpenQuestions.map((question) => (
                     <View
                         key={question.id}
                         style={[
@@ -91,7 +111,7 @@ export default function SelectQuestions() {
                 ))}
 
                 <Text style={styles.heading}>Multiple Choice Questions</Text>
-                {multipleChoiceQuestions.map((question) => (
+                {filteredMCQuestions.map((question) => (
                     <View
                         key={question.id}
                         style={[
@@ -208,11 +228,20 @@ const styles = StyleSheet.create({
         color: '#041575',
         fontWeight: 'bold',
         textAlign: 'center',
-      },
-      disabledButton: {
+    },
+    disabledButton: {
         opacity: 0.5,
-      },
-      
+    },
+    searchBar: {
+        backgroundColor: 'white',
+        padding: 10,
+        borderRadius: 10,
+        marginBottom: 20,
+        fontSize: 16,
+        borderColor: '#ccc',
+        borderWidth: 1,
+    },
+    
 
 
 });

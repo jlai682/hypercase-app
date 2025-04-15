@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Pressable, TextInput, Button } from 'react-native';
+import { StyleSheet, View, Text, Pressable, TextInput, Button } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -129,7 +129,7 @@ export default function ProviderDash() {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
-          "Authorization": `Bearer ${token}`  // Include JWT token - SURAJ
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ patient_email: patient.email })
       });
@@ -137,15 +137,19 @@ export default function ProviderDash() {
       const data = await response.json();
       console.log('Connection Response:', data);
 
-      if (response.ok) {
-        alert(data.message);
-      } else {
+      if (!response.ok){
         alert(data.error || 'Failed to connect');
       }
+
       fetchProviderPatients();
+
+      // 👇 Reset search input and result
+      setEmail('');
+      setPatient(null);
+
     } catch (error) {
       console.error('Error connecting to patient:', error);
-      alert('An error occurred while connection.');
+      alert('An error occurred while connecting.');
     }
   }
 
@@ -267,28 +271,34 @@ export default function ProviderDash() {
             value={email}
             onChangeText={setEmail}
           />
-          <Button title="Search" onPress={handleSearch} />
+          <Pressable style={styles.connectButton} onPress={handleSearch}>
+            <Text style={styles.buttonText}>Search</Text>
+          </Pressable>
         </View>
-        <Button title="Log Out" onPress={onLogout} />
 
 
 
         {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
         {patient && (
           <View style={styles.patientInfo}>
-            <ThemedText>Name: {patient.firstName + " " + patient.lastName}</ThemedText>
-            <ThemedText>Email: {patient.email}</ThemedText>
+            <ThemedText style={styles.searchResults}>Name: {patient.firstName + " " + patient.lastName}</ThemedText>
+            <ThemedText style={styles.searchResults}>Email: {patient.email}</ThemedText>
 
             {/* Connect to Patient Button */}
             <Pressable style={styles.connectButton} onPress={handleConnect}>
               <ThemedText style={styles.buttonText}>Connect to Patient</ThemedText>
             </Pressable>
 
+
+
           </View>
         )}
 
 
 
+        <Pressable style={styles.connectButton} onPress={onLogout}>
+          <Text style={styles.buttonText}>Log Out</Text>
+        </Pressable>
 
 
 
@@ -301,97 +311,95 @@ export default function ProviderDash() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#cae7ff',
+    backgroundColor: '#cae7ff', // softer blue
   },
-
-  // container: {
-  //   flex: 1,
-  //   justifyContent: 'flex-start',
-  //   alignItems: 'flex-start',
-  //   backgroundColor: '#cae7ff',
-  //   width: '100%',
-  // },
   content: {
-    flexGrow: 1,         // Instead of flex: 1
-    alignItems: 'stretch', // Ensures children stretch fully
+    flexGrow: 1,
+    alignItems: 'stretch',
     width: '100%',
     padding: 20,
   },
   title: {
-    fontSize: 27,
-    fontFamily: 'Figtree_400Regular',
-    marginBottom: 20,
+    fontSize: 24,
+    fontWeight: '600',
     color: '#041575',
-    paddingTop: 20
+    marginTop: 10,
+    fontFamily: 'Figtree_400Regular',
   },
   doctorName: {
     fontSize: 30,
-    fontFamily: 'Figtree_400Regular',
+    fontWeight: '700',
     color: '#041575',
-    paddingTop: 10
+    marginBottom: 20,
+    fontFamily: 'Figtree_400Regular',
+    marginTop: 20,
+    paddingTop: 10,
   },
   horizontalLine: {
-    height: 1,
-    backgroundColor: '#A9A9A9', // or any color you like
-    width: '100%',
-    marginVertical: 16, // spacing above and below the line
-    alignSelf: 'stretch',
-  },
-  searchContainer: {
-    marginBottom: 16,
-    width: '100%'
-
-  },
-  patientInfo: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-    padding: 0,
-    margin: 0,
-    width: '100%'
+    height: 2,
+    backgroundColor: '#87CFE9',
+    marginVertical: 15,
+    borderRadius: 5,
   },
   sectionTitle: {
     fontSize: 20,
-    fontFamily: 'Figtree_400Regular',
+    fontWeight: '600',
+    color: '#041575',
     marginBottom: 10,
-    color: '#041575'
-  },
-  searchInput: {
-    height: 40,
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-    width: '100%'
-
-  },
-  headerContainer: {
-    gap: 8,
-    alignItems: 'center',
-    marginBottom: 24,
-    paddingTop: 8,
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
+    fontFamily: 'Figtree_400Bold',
   },
   patientInfo: {
-    padding: 7,
-    marginBottom: 10,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+    fontFamily: 'Figtree_400Regular',
+  },
+  searchContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  searchInput: {
+    height: 45,
+    borderColor: '#ccc',
+    borderWidth: 1,
     borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    backgroundColor: '#f9f9f9',
+    fontFamily: 'Figtree_400Regular',
   },
   connectButton: {
-    marginTop: 12,
-    backgroundColor: '#007AFF',
-    paddingVertical: 10,
-    borderRadius: 8,
+    marginTop: 20,
+    backgroundColor: '#041575',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
   },
   buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Figtree_400Regular',
   },
+  errorText: {
+    color: 'red',
+    marginTop: 10,
+    fontWeight: '500',
+    fontFamily: 'Figtree_400Regular',
 
+  },
+  searchResults: {
+    fontFamily: 'Figtree_400Regular',
+  }
 });

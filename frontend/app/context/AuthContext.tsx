@@ -190,7 +190,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         setAuthState({ token: null, authenticated: false });
-        router.push('/login');
+        router.push('/');
     };
 
 
