@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import NavBar from '@/components/navigation/NavBar'
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "./context/AuthContext";
+import BackButton from '../components/BackButton';
 
 // Remove TypeScript interfaces and convert to JSX
 
@@ -40,6 +41,9 @@ export default function ProfileScreen() {
       <StatusBar style="dark" />
       <ScrollView style={styles.scrollView}>
         <View style={styles.profileContainer}>
+        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+        <BackButton />
+      </View>
           <View style={styles.avatarContainer}>
             <Image
               // source={require('./assets/profile-placeholder.png')}

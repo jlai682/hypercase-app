@@ -1,15 +1,15 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, StyleSheet, Platform, TouchableOpacity, SafeAreaView} from 'react-native';
+import { View, Alert, Text, StyleSheet, Platform, TouchableOpacity, SafeAreaView } from 'react-native';
 import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from './context/AuthContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import RecordingRequests from '../components/RecordingRequests';
 import PreviousRecordings from '../components/PreviousRecordings';
 import config from '../config';
+import BackButton from '../components/BackButton';
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
@@ -149,6 +149,9 @@ export default function RecordScreen() {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
+      <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+        <BackButton />
+      </View>
       <RecordingRequests
         sentRequests={JSON.stringify(sentRecordings)}
         completedRequests={JSON.stringify(completedRecordings)}

@@ -3,6 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, StyleSheet, SafeAreaView } fro
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from '../context/AuthContext';
 import config from '../../config';
+import BackButton from '../../components/BackButton';
 
 const PreviousSurvey = () => {
     const [surveyData, setSurveyData] = useState(null);
@@ -43,6 +44,14 @@ const PreviousSurvey = () => {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
+
+
+                <View style={{ alignSelf: 'flex-start', marginTop: 50, marginLeft: 20 }}>
+                    <BackButton />
+                </View>
+
+
+
                 <ActivityIndicator size="large" color="#0000ff" />
             </View>
         );
@@ -51,6 +60,12 @@ const PreviousSurvey = () => {
     if (error) {
         return (
             <View style={styles.errorContainer}>
+
+                <View style={{ alignSelf: 'flex-start', marginTop: 50, marginLeft: 20 }}>
+                    <BackButton />
+                </View>
+
+
                 <Text style={styles.errorText}>Error: {error}</Text>
             </View>
         );
@@ -59,6 +74,12 @@ const PreviousSurvey = () => {
     if (!surveyData) {
         return (
             <View style={styles.emptyContainer}>
+
+                <View style={{ alignSelf: 'flex-start', marginTop: 50, marginLeft: 20 }}>
+                    <BackButton />
+                </View>
+
+
                 <Text>No survey data available</Text>
             </View>
         );
@@ -77,6 +98,7 @@ const PreviousSurvey = () => {
 
     const renderItem = ({ item, index }) => (
         <View style={styles.itemContainer} key={index}>
+
             <Text style={styles.question}>{item.question.question_description}</Text>
             {item.options ? (
                 <View style={styles.options}>
@@ -101,6 +123,12 @@ const PreviousSurvey = () => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+
+            <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+                <BackButton />
+            </View>
+
+
             <FlatList
                 data={surveyData.multiple_choice_responses.concat(surveyData.open_responses)}
                 renderItem={renderItem}

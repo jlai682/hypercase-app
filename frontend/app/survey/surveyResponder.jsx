@@ -6,6 +6,7 @@ import config from '../../config';
 import { ThemedText } from '@/components/ThemedText';
 import { TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BackButton from '../../components/BackButton';
 
 
 
@@ -19,8 +20,8 @@ const SurveyResponder = () => {
     const [multipleChoiceResponses, setMultipleChoiceResponses] = useState({});
 
 
-        const router = useRouter();
-    
+    const router = useRouter();
+
     const { authState } = useAuth();
     const token = authState.token;
 
@@ -189,6 +190,10 @@ const SurveyResponder = () => {
     return (
         <SafeAreaView style={styles.safeArea}>
 
+            <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+                <BackButton />
+            </View>
+
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.container}>
                     <Text style={styles.surveyTitle}>{surveyData.survey_title}</Text>
@@ -259,10 +264,10 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#cae7ff',
-      },
-      scrollContainer: {
+    },
+    scrollContainer: {
         padding: 15,
-      },      
+    },
     container: {
         flex: 1,
         padding: 20,

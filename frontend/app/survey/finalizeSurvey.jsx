@@ -6,12 +6,12 @@ import {
     StyleSheet,
     SafeAreaView,
     Button,
-} from 'react-native';import { useLocalSearchParams, useRouter } from 'expo-router';
+} from 'react-native'; import { useLocalSearchParams, useRouter } from 'expo-router';
 import { TextInput } from 'react-native';
 import { format } from 'date-fns'; // you'll need to install date-fns if not already
 import config from '../../config';
 import { useAuth } from '../context/AuthContext';
-
+import BackButton from '../../components/BackButton';
 
 
 export default function FinalizeSurvey() {
@@ -61,7 +61,7 @@ export default function FinalizeSurvey() {
                 // router.push('/survey/success');
                 router.push({
                     pathname: '/patientProfile',
-                    params: {patientEmail: parsedPatient.email}
+                    params: { patientEmail: parsedPatient.email }
                 });
             } else {
                 // Handle errors from backend
@@ -77,41 +77,44 @@ export default function FinalizeSurvey() {
 
 
     return (
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#cae7ff' }}>
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.heading}>Finalize Your Survey</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#cae7ff' }}>
+            <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+                <BackButton />
+            </View>
+            <ScrollView contentContainerStyle={styles.container}>
+                <Text style={styles.heading}>Finalize Your Survey</Text>
 
-            <Text style={styles.label}>Survey Title:</Text>
-            <TextInput
-                style={styles.input}
-                value={surveyTitle}
-                onChangeText={setSurveyTitle}
-            />
+                <Text style={styles.label}>Survey Title:</Text>
+                <TextInput
+                    style={styles.input}
+                    value={surveyTitle}
+                    onChangeText={setSurveyTitle}
+                />
 
 
-            <Text style={styles.heading}>Open-ended Questions</Text>
-            {parsedOpenQuestions.map((q, index) => (
-                <View key={`open-${q.id}`} style={styles.card}>
-                    <Text style={styles.questionText}>{q.question_description}</Text>
-                </View>
-            ))}
+                <Text style={styles.heading}>Open-ended Questions</Text>
+                {parsedOpenQuestions.map((q, index) => (
+                    <View key={`open-${q.id}`} style={styles.card}>
+                        <Text style={styles.questionText}>{q.question_description}</Text>
+                    </View>
+                ))}
 
-            <Text style={styles.heading}>Multiple Choice Questions</Text>
-            {parsedMCQuestions.map((q, index) => (
-                <View key={`mc-${q.id}`} style={styles.card}>
-                    <Text style={styles.questionText}>{q.question_description}</Text>
-                    {q.options.map(opt => (
-                        <Text key={opt.id} style={styles.optionText}>{opt.option}</Text>
-                    ))}
-                </View>
-            ))}
+                <Text style={styles.heading}>Multiple Choice Questions</Text>
+                {parsedMCQuestions.map((q, index) => (
+                    <View key={`mc-${q.id}`} style={styles.card}>
+                        <Text style={styles.questionText}>{q.question_description}</Text>
+                        {q.options.map(opt => (
+                            <Text key={opt.id} style={styles.optionText}>{opt.option}</Text>
+                        ))}
+                    </View>
+                ))}
 
-            <Button title="Create Survey" onPress={handleCreateSurvey} />
+                <Button title="Create Survey" onPress={handleCreateSurvey} />
 
-            {error && <Text style={styles.error}>{error}</Text>}
-        </ScrollView>
-                </SafeAreaView>
-        
+                {error && <Text style={styles.error}>{error}</Text>}
+            </ScrollView>
+        </SafeAreaView>
+
     );
 }
 

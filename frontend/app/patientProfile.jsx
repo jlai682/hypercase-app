@@ -274,8 +274,10 @@ export default function PatientProfile() {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10, marginBottom: 10}}>
+          <BackButton />
+        </View>
         <View style={styles.header}>
-          <BackButton onPress={() => router.back()} /> {/* Add the BackButton here */}
           <Image source={profile} style={styles.profileImage} />
           {patient ? (
             <Text style={styles.patientName}>{patient.firstName} {patient.lastName}</Text>
@@ -560,5 +562,5 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 20,
-},
+  },
 });

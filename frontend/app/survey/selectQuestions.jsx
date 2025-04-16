@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import config from '../../config';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
+import BackButton from '../../components/BackButton';
 
 
 export default function SelectQuestions() {
@@ -86,6 +87,9 @@ export default function SelectQuestions() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#cae7ff' }}>
+            <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+                <BackButton />
+            </View>
             <ScrollView contentContainerStyle={styles.container}>
                 <Text style={styles.pageTitle}>Select Questions</Text>
 
@@ -241,7 +245,7 @@ const styles = StyleSheet.create({
         borderColor: '#ccc',
         borderWidth: 1,
     },
-    
+
 
 
 });

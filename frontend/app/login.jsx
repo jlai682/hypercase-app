@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from './context/AuthContext'; // Import the useAuth hook
 import { useNavigation } from '@react-navigation/native'; // Import navigation hook
+import BackButton from '../components/BackButton';
 
 const Login = () => {
   const { loginType = 'patient' } = useLocalSearchParams();
@@ -27,19 +28,17 @@ const Login = () => {
     }
   };
 
-  // Custom back button handler
-  const handleBackPress = () => {
-    navigation.goBack(); // This will navigate back to the previous screen
-  };
 
 
 
   return (
     <View style={styles.container}>
-      {/* Custom Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
+
+<View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+                <BackButton />
+            </View>
+
+
 
       <View style={styles.content}>
         <Text style={styles.title}>{loginType === 'provider' ? 'Provider Login' : 'Patient Login'}</Text>
