@@ -14,7 +14,8 @@ from providerManagement.models import Provider, ProviderPatientConnection
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import io, os, subprocess
 from django.core.files.uploadedfile import InMemoryUploadedFile
-
+from django.utils.text import get_valid_filename
+import uuid
 
 
 
@@ -79,7 +80,8 @@ class RecordingViewSet(ModelViewSet):
                     return Response({'error': 'No patient profile'}, status=status.HTTP_404_NOT_FOUND)
 
         # 6) Write upload to temp file
-        tmp_in = os.path.join(settings.MEDIA_ROOT, f"tmp_{audio_file.name}")
+        original_name = get_valid_filename(audio_file.name)
+        tmp_in = os.path.join(settings.MEDIA_ROOT, f"tmp_{uuid.uuid4()}_{original_name}")        
         with open(tmp_in, 'wb+') as dest:
             for chunk in audio_file.chunks():
                 dest.write(chunk)

@@ -29,9 +29,6 @@ const NavBar = ({ patient }) => {
       <TouchableOpacity style={styles.tabItem} onPress={() => router.push('../recordings')}>
         <Ionicons name="mic-outline" size={24} color="#333" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.tabItem} onPress={() => router.push('../survey')}>
-        <Ionicons name="document-text-outline" size={24} color="#333" />
-      </TouchableOpacity>
       <TouchableOpacity style={styles.tabItem} onPress={handleProfilePress}>
         <Ionicons name="person-outline" size={24} color="#333" />
       </TouchableOpacity>

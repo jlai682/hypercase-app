@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import config from '../config';
 import { useAuth } from "./context/AuthContext";
 import { SafeAreaView } from 'react-native';
-import { StyleSheet, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput } from 'react-native';
+import { StyleSheet, Platform, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { Image } from 'react-native';
 import profile from '../assets/images/profile.png';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import BackButton from '@/components/BackButton'; // Import the BackButton component
+import { Audio } from 'expo-av';
+
 
 
 export default function PatientProfile() {
@@ -17,6 +19,8 @@ export default function PatientProfile() {
   const [recordingRequests, setRecordingRequests] = useState([]); // State for recording requests
   const [error, setError] = useState(null);
   const [previousRecordings, setPreviousRecordings] = useState([]);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+
 
   // For the request modal
   const [modalVisible, setModalVisible] = useState(false);
@@ -27,6 +31,87 @@ export default function PatientProfile() {
   // Access the token from AuthContext
   const { authState } = useAuth();
   const token = authState.token;
+
+  const playRecording = async (uri) => {
+    try {
+      console.log("🔊 Attempting to play URI:", uri);
+
+      // Stop currently playing recording if any
+      if (currentlyPlaying) {
+        console.log("⏹️ Stopping currently playing audio");
+        await currentlyPlaying.sound.stopAsync();
+        await currentlyPlaying.sound.unloadAsync();  // 🔥 This is key
+        setCurrentlyPlaying(null);
+      }
+
+      if (Platform.OS === 'web') {
+        // Web implementation
+        const newSound = new window.Audio(uri);
+        console.log("🎧 Created Audio element:", newSound);
+
+        // Check if browser supports the type
+        const canPlayMp3 = newSound.canPlayType('audio/mpeg');
+        const canPlayWav = newSound.canPlayType('audio/wav');
+        console.log(`🧪 canPlayType('audio/mpeg'): ${canPlayMp3}`);
+        console.log(`🧪 canPlayType('audio/wav'): ${canPlayWav}`);
+
+        newSound.onerror = (e) => {
+          console.error("❌ Audio load/play error:", e);
+        };
+
+        // Create a wrapper object with compatible interface for our state
+        const soundWrapper = {
+          stopAsync: () => {
+            newSound.pause();
+            newSound.currentTime = 0;
+            return Promise.resolve();
+          }
+        };
+
+        newSound.onended = () => {
+          console.log("✅ Finished playing audio");
+          setCurrentlyPlaying(null);
+        };
+
+        const playPromise = newSound.play();
+
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.error("❌ Failed to play audio:", err);
+          });
+        }
+
+        setCurrentlyPlaying({ uri, sound: soundWrapper });
+      } else {
+        // Native (mobile) implementation using Expo AV
+        if (currentlyPlaying) {
+          console.log("⏹️ Stopping and unloading current sound");
+          await currentlyPlaying.sound.stopAsync();
+          await currentlyPlaying.sound.unloadAsync(); // unload to reset
+          setCurrentlyPlaying(null);
+        }
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true }
+        );
+
+        console.log("📱 Playing sound natively");
+        setCurrentlyPlaying({ uri, sound: newSound });
+
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            console.log("✅ Native audio finished");
+            setCurrentlyPlaying(null);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('🚨 Failed to play recording:', err);
+      Alert.alert('Error', 'Could not play recording');
+    }
+  };
+
+
 
   useEffect(() => {
     const fetchPatient = async () => {
@@ -64,7 +149,7 @@ export default function PatientProfile() {
   // Fetch all surveys associated with the patient when the component mounts
   useEffect(() => {
     const fetchSurveys = async () => {
-      if (patient) {
+      if (patient && token) {
         try {
           const response = await fetch(`${config.BACKEND_URL}/api/surveyManagement/get_surveys/${patient.id}/`, {
             method: 'GET',
@@ -90,53 +175,57 @@ export default function PatientProfile() {
     fetchSurveys();
   }, [patient, token]); // Runs when patient data is fetched
 
+  const fetchPreviousRecordings = async () => {
+    if (!patient || !token) {
+      return
+    }
+    try {
+      const response = await fetch(`${config.BACKEND_URL}/api/recordings/provider-patient-recordings/?patient_id=${patient.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,  // or use 'Cookie': 'sessionid=...' if you're using session authentication
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch recordings');
+      }
+
+      const data = await response.json();
+      console.log('Recordings:', data);
+      setPreviousRecordings(data);
+    } catch (error) {
+      console.error('Error fetching recordings:', error.message);
+      throw error;
+    }
+  };
+
+
   // Fetch recording requests for this patient
   useEffect(() => {
-    const fetchRecordingRequests = async () => {
-      if (patient) {
-        try {
-          const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/by-patient/${patient.id}/`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+    // const fetchRecordingRequests = async () => {
+    //   if (patient && token) {
+    //     try {
+    //       const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/by-patient/${patient.id}/`, {
+    //         method: 'GET',
+    //         headers: {
+    //           'Authorization': `Bearer ${token}`,
+    //         },
+    //       });
 
-          const data = await response.json();
-          if (response.ok) {
-            setRecordingRequests(data);  // Set the recording requests data
-          } else {
-            console.error('Error fetching recording requests:', data.error);
-          }
-        } catch (error) {
-          console.error('Request failed:', error);
-        }
-      }
-    };
-
-    const fetchPreviousRecordings = async () => {
-      if (patient) {
-        try {
-          const recordingResponse = await fetch(`${config.BACKEND_URL}/api/recordings/provider-patient-recordings?patient_id=${patient.id}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-
-          const recordingData = await recordingResponse.json();
-          if (recordingResponse.ok) {
-            setPreviousRecordings(recordingData);
-            console.log("Recording data: ", recordingData);
-          } else {
-            console.error('Error fetching previous recordings:', recordingData.error);
-          }
-        } catch (error) {
-          console.error('Request failed:', error);
-        }
-      }
-    }
+    //       const data = await response.json();
+    //       if (response.ok) {
+    //         setRecordingRequests(data);  // Set the recording requests data
+    //       } else {
+    //         console.error('Error fetching recording requests:', data.error);
+    //       }
+    //     } catch (error) {
+    //       console.error('Request failed:', error);
+    //     }
+    //   }
+    // };
 
     fetchRecordingRequests();
     fetchPreviousRecordings();
@@ -271,10 +360,31 @@ export default function PatientProfile() {
     </View>
   )
 
+    // Define a function for rendering the list of surveys and recording requests
+  const renderSurveySection = (title, data, onPress) => (
+    <View style={styles.surveysContainer}>
+      <Text style={styles.sectionTitle}>{title}:</Text>
+      {data.length > 0 ? (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <Pressable style={styles.surveyItem} onPress={() => onPress(item)}>
+              <Text style={styles.surveyTitle}>{item.title}</Text>
+              <Text style={styles.surveyDate}>{new Date(item.issue_date).toLocaleDateString()}</Text>
+            </Pressable>
+          )}
+        />
+      ) : (
+        <Text>No {title.toLowerCase()} found.</Text>
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10, marginBottom: 10}}>
+        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10, marginBottom: 10 }}>
           <BackButton />
         </View>
         <View style={styles.header}>
@@ -290,34 +400,43 @@ export default function PatientProfile() {
         <View style={styles.surveysContainer}>
           <Text style={styles.sectionTitle}>Pending Surveys:</Text>
           {pendingSurveys.length > 0 ? (
-            pendingSurveys.map((survey) => (
-              <Pressable key={survey.id} style={styles.surveyItem} onPress={() => console.log(`Survey clicked: ${survey.title}`)}>
-                <Text style={styles.surveyTitle}>{survey.title}</Text>
-                <Text style={styles.surveyDate}>{new Date(survey.issue_date).toLocaleDateString()}</Text>
-              </Pressable>
-            ))
+            <FlatList
+              data={pendingSurveys}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.surveyItem}
+                  onPress={() => console.log(`Survey clicked: ${item.title}`)}
+                >
+                  <Text style={styles.surveyTitle}>{item.title}</Text>
+                  <Text style={styles.surveyDate}>{new Date(item.issue_date).toLocaleDateString()}</Text>
+                </Pressable>
+              )}
+            />
           ) : (
             <Text>No pending surveys.</Text>
           )}
         </View>
 
-
         {/* Display Completed Surveys */}
         <View style={styles.surveysContainer}>
           <Text style={styles.sectionTitle}>Completed Surveys:</Text>
           {completedSurveys.length > 0 ? (
-            completedSurveys.map((survey) => (
-              <Pressable
-                key={survey.id}
-                style={styles.surveyItem}
-                onPress={() => handleCompletedSurveyPress(survey)}
-              >
-                <Text style={styles.surveyTitle}>{survey.title}</Text>
-                <Text style={styles.surveyDate}>
-                  {new Date(survey.issue_date).toLocaleDateString()}
-                </Text>
-              </Pressable>
-            ))
+            <FlatList
+              data={completedSurveys}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.surveyItem}
+                  onPress={() => handleCompletedSurveyPress(item)}
+                >
+                  <Text style={styles.surveyTitle}>{item.title}</Text>
+                  <Text style={styles.surveyDate}>
+                    {new Date(item.issue_date).toLocaleDateString()}
+                  </Text>
+                </Pressable>
+              )}
+            />
           ) : (
             <Text>No completed surveys found.</Text>
           )}
@@ -327,16 +446,19 @@ export default function PatientProfile() {
         <View style={styles.surveysContainer}>
           <Text style={styles.sectionTitle}>Pending Recordings:</Text>
           {pendingRecordings.length > 0 ? (
-            pendingRecordings.map((request) => (
-              <Pressable
-                key={request.id}
-                style={styles.surveyItem}
-                onPress={() => handleRecordingRequestPress(request)}
-              >
-                <Text style={styles.surveyTitle}>{request.title}</Text>
-                <Text style={styles.surveyDate}>{new Date(request.issue_date).toLocaleDateString()}</Text>
-              </Pressable>
-            ))
+            <FlatList
+              data={pendingRecordings}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.surveyItem}
+                  onPress={() => handleRecordingRequestPress(item)}
+                >
+                  <Text style={styles.surveyTitle}>{item.title}</Text>
+                  <Text style={styles.surveyDate}>{new Date(item.issue_date).toLocaleDateString()}</Text>
+                </Pressable>
+              )}
+            />
           ) : (
             <Text>No pending recordings.</Text>
           )}

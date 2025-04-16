@@ -34,9 +34,9 @@ const Login = () => {
   return (
     <View style={styles.container}>
 
-<View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
-                <BackButton />
-            </View>
+      <View style={{ alignSelf: 'flex-start', marginTop: 60, marginLeft: 30 }}>
+        <BackButton />
+      </View>
 
 
 
