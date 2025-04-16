@@ -14,19 +14,25 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from django.conf import settings  # ✅ Import settings
+from django.conf.urls.static import static  # ✅ Import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.api.urls')),
     path('api/', include('recordings.urls')),
-    path('api/patientManagement/', include('patientManagement.urls')),  # Add this line
-    path('api/providerManagement/', include('providerManagement.urls')),  # Add this line
-    path('api/surveyManagement/', include('surveyManagement.urls')),  # Add this line
+    path('api/patientManagement/', include('patientManagement.urls')),
+    path('api/providerManagement/', include('providerManagement.urls')),
+    path('api/surveyManagement/', include('surveyManagement.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    
 ]
 
+# ✅ Serve media files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -60,42 +60,116 @@ const PreviousRecordings = () => {
         fetchData();
     }, []);
 
+    // const playRecording = async (uri) => {
+    //     try {
+    //         if (currentlyPlaying) {
+    //             await currentlyPlaying.sound.stopAsync();
+    //             setCurrentlyPlaying(null);
+    //         }
+
+    //         if (Platform.OS === 'web') {
+    //             const audio = new window.Audio(uri);
+    //             const soundWrapper = {
+    //                 stopAsync: () => {
+    //                     audio.pause();
+    //                     audio.currentTime = 0;
+    //                     return Promise.resolve();
+    //                 },
+    //             };
+    //             audio.onended = () => setCurrentlyPlaying(null);
+    //             audio.play();
+    //             setCurrentlyPlaying({ uri, sound: soundWrapper });
+    //         } else {
+    //             const { sound: newSound } = await Audio.Sound.createAsync(
+    //                 { uri },
+    //                 { shouldPlay: true }
+    //             );
+    //             setCurrentlyPlaying({ uri, sound: newSound });
+    //             newSound.setOnPlaybackStatusUpdate((status) => {
+    //                 if (status.didJustFinish) {
+    //                     setCurrentlyPlaying(null);
+    //                 }
+    //             });
+    //         }
+    //     } catch (err) {
+    //         console.error('Failed to play recording:', err);
+    //         Alert.alert('Error', 'Could not play recording');
+    //     }
+    // };
     const playRecording = async (uri) => {
         try {
-            if (currentlyPlaying) {
-                await currentlyPlaying.sound.stopAsync();
+          console.log("🔊 Attempting to play URI:", uri);
+      
+          // Stop currently playing recording if any
+          if (currentlyPlaying) {
+            console.log("⏹️ Stopping currently playing audio");
+            await currentlyPlaying.sound.stopAsync();
+            setCurrentlyPlaying(null);
+          }
+      
+          if (Platform.OS === 'web') {
+            // Web implementation
+            const newSound = new window.Audio(uri);
+            console.log("🎧 Created Audio element:", newSound);
+      
+            // Check if browser supports the type
+            const canPlayMp3 = newSound.canPlayType('audio/mpeg');
+            const canPlayWav = newSound.canPlayType('audio/wav');
+            console.log(`🧪 canPlayType('audio/mpeg'): ${canPlayMp3}`);
+            console.log(`🧪 canPlayType('audio/wav'): ${canPlayWav}`);
+      
+            newSound.onerror = (e) => {
+              console.error("❌ Audio load/play error:", e);
+            };
+      
+            // Create a wrapper object with compatible interface for our state
+            const soundWrapper = {
+              stopAsync: () => {
+                newSound.pause();
+                newSound.currentTime = 0;
+                return Promise.resolve();
+              }
+            };
+      
+            newSound.onended = () => {
+              console.log("✅ Finished playing audio");
+              setCurrentlyPlaying(null);
+            };
+      
+            const playPromise = newSound.play();
+      
+            if (playPromise !== undefined) {
+              playPromise.catch((err) => {
+                console.error("❌ Failed to play audio:", err);
+              });
+            }
+      
+            setCurrentlyPlaying({ uri, sound: soundWrapper });
+          } else {
+            // Native (mobile) implementation using Expo AV
+            const { sound: newSound } = await Audio.Sound.createAsync(
+              { uri },
+              { shouldPlay: true }
+            );
+      
+            console.log("📱 Playing sound natively");
+            setCurrentlyPlaying({ uri, sound: newSound });
+      
+            newSound.setOnPlaybackStatusUpdate((status) => {
+              if (status.didJustFinish) {
+                console.log("✅ Native audio finished");
                 setCurrentlyPlaying(null);
-            }
-
-            if (Platform.OS === 'web') {
-                const audio = new window.Audio(uri);
-                const soundWrapper = {
-                    stopAsync: () => {
-                        audio.pause();
-                        audio.currentTime = 0;
-                        return Promise.resolve();
-                    },
-                };
-                audio.onended = () => setCurrentlyPlaying(null);
-                audio.play();
-                setCurrentlyPlaying({ uri, sound: soundWrapper });
-            } else {
-                const { sound: newSound } = await Audio.Sound.createAsync(
-                    { uri },
-                    { shouldPlay: true }
-                );
-                setCurrentlyPlaying({ uri, sound: newSound });
-                newSound.setOnPlaybackStatusUpdate((status) => {
-                    if (status.didJustFinish) {
-                        setCurrentlyPlaying(null);
-                    }
-                });
-            }
+              }
+            });
+          }
         } catch (err) {
-            console.error('Failed to play recording:', err);
-            Alert.alert('Error', 'Could not play recording');
+          console.error('🚨 Failed to play recording:', err);
+          Alert.alert('Error', 'Could not play recording');
         }
-    };
+      };
+      
+      
+    
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>
