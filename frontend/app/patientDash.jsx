@@ -9,8 +9,6 @@ import NavBar from '../components/navigation/NavBar';
 
 import { useAuth } from "./context/AuthContext";
 
-
-
 const FeatureCard = ({ iconName, title, description, onPress }) => (
   <Pressable onPress={onPress} style={({ pressed }) => [
     styles.card,

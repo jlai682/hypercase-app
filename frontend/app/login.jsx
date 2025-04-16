@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from './context/AuthContext'; // Import the useAuth hook
+import { useNavigation } from '@react-navigation/native'; // Import navigation hook
 
 const Login = () => {
   const { loginType = 'patient' } = useLocalSearchParams();
   const router = useRouter();
   const { onLogin } = useAuth(); // Get onLogin from context
+  const navigation = useNavigation(); // Use the navigation hook
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,8 +27,20 @@ const Login = () => {
     }
   };
 
+  // Custom back button handler
+  const handleBackPress = () => {
+    navigation.goBack(); // This will navigate back to the previous screen
+  };
+
+
+
   return (
     <View style={styles.container}>
+      {/* Custom Back Button */}
+      <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
+
       <View style={styles.content}>
         <Text style={styles.title}>{loginType === 'provider' ? 'Provider Login' : 'Patient Login'}</Text>
 
@@ -121,6 +135,14 @@ const styles = StyleSheet.create({
   registerLink: {
     color: '#0077CC',
     fontWeight: 'bold',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 1,
+    alignSelf: 'flex-start', // Ensures alignment to the left
+    width: 'auto', // Prevents stretching
   },
 });
 
