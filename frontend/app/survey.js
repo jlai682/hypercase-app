@@ -42,6 +42,9 @@ export default function SurveyScreen() {
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <ThemedText style={styles.header}>Voice Assessment</ThemedText>
+        <Pressable onPress={() => router.back()} style={styles.backButtonText}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#041575" />
+        </Pressable>
         <ThemedView style={styles.content}>
           
           <View style={styles.questionCard}>
@@ -261,4 +264,8 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
+  backButtonText: {
+    fontSize: 18,
+    color: '#041575',
+},
 });

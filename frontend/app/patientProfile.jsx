@@ -7,6 +7,7 @@ import { Image } from 'react-native';
 import profile from '../assets/images/profile.png';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
+import BackButton from '@/components/BackButton'; // Import the BackButton component
 
 
 export default function PatientProfile() {
@@ -274,6 +275,7 @@ export default function PatientProfile() {
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
+          <BackButton onPress={() => router.back()} /> {/* Add the BackButton here */}
           <Image source={profile} style={styles.profileImage} />
           {patient ? (
             <Text style={styles.patientName}>{patient.firstName} {patient.lastName}</Text>

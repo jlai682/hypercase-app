@@ -34,6 +34,11 @@ const Signup = () => {
 
     return (
         <View style={styles.container}>
+            {/* Back Button */}
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+
             <Text style={styles.title}>{signupType === 'patient' ? 'Patient Signup' : 'Provider Signup'}</Text>
             <TextInput
                 style={styles.input}
@@ -113,6 +118,10 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontFamily: 'Figtree_400Regular',
+    },
+    backButtonText: {
+        fontSize: 18,
+        color: '#041575',
     },
 });
 
