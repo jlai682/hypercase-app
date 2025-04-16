@@ -37,6 +37,7 @@ const PreviousRecordings = () => {
         return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
     };
 
+    
     useEffect(() => {
         const fetchData = async () => {
             if (!token || isTokenExpired(token)) return;
@@ -52,6 +53,8 @@ const PreviousRecordings = () => {
 
                 const data = await recordingRes.json();
                 setRecordings(data);
+                console.log("🎙️ Recordings fetched:", data);
+
             } catch (e) {
                 console.error(e);
             }
@@ -177,7 +180,7 @@ const PreviousRecordings = () => {
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.description}>{item.description}</Text>
             </View>
-            <TouchableOpacity style={styles.playIconButton} onPress={() => playRecording(item.audio_file)}>
+            <TouchableOpacity style={styles.playIconButton} onPress={() => playRecording(item.file_url)}>
                 <Ionicons name="play-circle" size={46} color="#041575" />
             </TouchableOpacity>
         </View>

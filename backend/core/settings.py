@@ -39,6 +39,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 ALLOWED_AUDIO_FORMATS = [
     'audio/mpeg',       # MP3
     'audio/mp4',        # M4A
+    'audio/mp4a-latm',
     'audio/wav',        # WAV
     'audio/x-wav',      # WAV (alternative MIME)
     'audio/webm',       # WebM
@@ -162,6 +163,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'recordings.middleware.AddAcceptRangesHeaderMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
