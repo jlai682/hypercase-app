@@ -107,25 +107,23 @@ export default function AudioRecorder() {
     };
 
     useEffect(() => {
-        // loadRecordings();
-
         let interval;
         if (isRecording) {
             interval = setInterval(() => {
                 setRecordingDuration(prev => prev + 1);
             }, 1000);
         }
-
+    
         return () => {
             if (interval) clearInterval(interval);
-
+    
             // Safely cleanup recording objects
             if (Platform.OS === 'web') {
                 if (audioStream) {
                     // Stop all audio tracks
                     audioStream.getTracks().forEach(track => track.stop());
                 }
-
+    
                 if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                     try {
                         mediaRecorder.stop();
@@ -142,17 +140,17 @@ export default function AudioRecorder() {
                     }
                 }
             }
-
-            // Cleanup sound playback
-            if (sound) {
+    
+            // Cleanup sound playback - use unloadAsync for both platforms
+            if (currentlyPlaying?.sound) {
                 try {
-                    sound.unloadAsync();
+                    currentlyPlaying.sound.unloadAsync();
                 } catch (error) {
                     console.log('Error unloading sound:', error);
                 }
             }
         };
-    }, [isRecording]);
+    }, [isRecording, currentlyPlaying, audioStream, mediaRecorder, recording]);
 
     //   const loadRecordings = async () => {
     //     try {
@@ -299,31 +297,45 @@ export default function AudioRecorder() {
                 await currentlyPlaying.sound.stopAsync();
                 setCurrentlyPlaying(null);
             }
-
+    
             if (Platform.OS === 'web') {
                 // Web implementation
                 let audioUrl = uri;
-
+    
                 // Create a new HTML5 Audio element
                 const newSound = new Audio(audioUrl);
-
+    
                 // Create a wrapper object with compatible interface for our state
                 const soundWrapper = {
                     stopAsync: () => {
                         newSound.pause();
                         newSound.currentTime = 0;
                         return Promise.resolve();
+                    },
+                    // Add unloadAsync for compatibility with cleanup code
+                    unloadAsync: () => {
+                        newSound.pause();
+                        newSound.currentTime = 0;
+                        newSound.src = ''; // Clear the source
+                        return Promise.resolve();
                     }
                 };
-
+    
                 // Set up ended event
                 newSound.onended = () => {
                     setCurrentlyPlaying(null);
                 };
-
+    
+                // Set up error event
+                newSound.onerror = (error) => {
+                    console.error('Audio playback error:', error);
+                    setCurrentlyPlaying(null);
+                    Alert.alert('Error', 'Could not play recording');
+                };
+    
                 // Start playing
-                newSound.play();
-
+                await newSound.play();
+    
                 setCurrentlyPlaying({ uri, sound: soundWrapper });
             } else {
                 // Native implementation using Expo AV
@@ -331,9 +343,9 @@ export default function AudioRecorder() {
                     { uri },
                     { shouldPlay: true }
                 );
-
+    
                 setCurrentlyPlaying({ uri, sound: newSound });
-
+    
                 newSound.setOnPlaybackStatusUpdate((status) => {
                     if (status.didJustFinish) {
                         setCurrentlyPlaying(null);

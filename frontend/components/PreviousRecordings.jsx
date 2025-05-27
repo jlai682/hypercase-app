@@ -13,11 +13,15 @@ import config from '../config';
 import { useAuth } from '../app/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const PreviousRecordings = () => {
+const PreviousRecordings = ({ patient }) => { // patient should be the patient ID
   const [recordings, setRecordings] = useState([]);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [loading, setLoading] = useState(true);
   const { authState } = useAuth();
   const token = authState.token;
+
+  // patient should already be the ID, but let's ensure it's a number
+  const patientId = patient ? parseInt(patient) : null;
 
   const isTokenExpired = (token) => {
     if (!token || !isValidJWT(token)) return true;
@@ -37,69 +41,48 @@ const PreviousRecordings = () => {
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
 
-
   useEffect(() => {
     const fetchData = async () => {
-      if (!token || isTokenExpired(token)) return;
+      if (!token || isTokenExpired(token) || !patientId) {
+        setLoading(false);
+        return;
+      }
+      
       try {
-        const recordingRes = await fetch(`${config.BACKEND_URL}/api/recordings/by_patient/`, {
+        setLoading(true);
+        // Updated endpoint to fetch recordings for specific patient
+        const recordingRes = await fetch(`${config.BACKEND_URL}/api/recordings/patient/${patientId}/`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
 
-        if (!recordingRes.ok) throw new Error("Failed to get recordings");
+        if (!recordingRes.ok) {
+          if (recordingRes.status === 404) {
+            // No recordings found for this patient
+            setRecordings([]);
+            return;
+          }
+          throw new Error("Failed to get recordings");
+        }
 
         const data = await recordingRes.json();
         setRecordings(data);
-        console.log("🎙️ Recordings fetched:", data);
+        console.log(`🎙️ Recordings fetched for patient ${patientId}:`, data);
 
       } catch (e) {
-        console.error(e);
+        console.error('Error fetching patient recordings:', e);
+        setRecordings([]);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [token, patientId]); // Use patientId instead of patient
 
-  // const playRecording = async (uri) => {
-  //     try {
-  //         if (currentlyPlaying) {
-  //             await currentlyPlaying.sound.stopAsync();
-  //             setCurrentlyPlaying(null);
-  //         }
-
-  //         if (Platform.OS === 'web') {
-  //             const audio = new window.Audio(uri);
-  //             const soundWrapper = {
-  //                 stopAsync: () => {
-  //                     audio.pause();
-  //                     audio.currentTime = 0;
-  //                     return Promise.resolve();
-  //                 },
-  //             };
-  //             audio.onended = () => setCurrentlyPlaying(null);
-  //             audio.play();
-  //             setCurrentlyPlaying({ uri, sound: soundWrapper });
-  //         } else {
-  //             const { sound: newSound } = await Audio.Sound.createAsync(
-  //                 { uri },
-  //                 { shouldPlay: true }
-  //             );
-  //             setCurrentlyPlaying({ uri, sound: newSound });
-  //             newSound.setOnPlaybackStatusUpdate((status) => {
-  //                 if (status.didJustFinish) {
-  //                     setCurrentlyPlaying(null);
-  //                 }
-  //             });
-  //         }
-  //     } catch (err) {
-  //         console.error('Failed to play recording:', err);
-  //         Alert.alert('Error', 'Could not play recording');
-  //     }
-  // };
-  const playRecording = async (uri) => {
+  const playRecording = async (uri, recordingId) => {
     try {
       console.log("🔊 Attempting to play URI:", uri);
 
@@ -107,23 +90,31 @@ const PreviousRecordings = () => {
       if (currentlyPlaying) {
         console.log("⏹️ Stopping currently playing audio");
         await currentlyPlaying.sound.stopAsync();
-        await currentlyPlaying.sound.unloadAsync();  // 🔥 This is key
+        if (currentlyPlaying.sound.unloadAsync) {
+          await currentlyPlaying.sound.unloadAsync();
+        }
         setCurrentlyPlaying(null);
       }
 
+      // Create full URL if it's a relative path
+      const fullUrl = uri.startsWith('http') ? uri : `${config.BACKEND_URL}${uri}`;
+
       if (Platform.OS === 'web') {
         // Web implementation
-        const newSound = new window.Audio(uri);
+        const newSound = new window.Audio(fullUrl);
         console.log("🎧 Created Audio element:", newSound);
 
         // Check if browser supports the type
         const canPlayMp3 = newSound.canPlayType('audio/mpeg');
         const canPlayWav = newSound.canPlayType('audio/wav');
+        const canPlayWebm = newSound.canPlayType('audio/webm');
         console.log(`🧪 canPlayType('audio/mpeg'): ${canPlayMp3}`);
         console.log(`🧪 canPlayType('audio/wav'): ${canPlayWav}`);
+        console.log(`🧪 canPlayType('audio/webm'): ${canPlayWebm}`);
 
         newSound.onerror = (e) => {
           console.error("❌ Audio load/play error:", e);
+          Alert.alert('Error', 'Could not play this recording format');
         };
 
         // Create a wrapper object with compatible interface for our state
@@ -131,6 +122,12 @@ const PreviousRecordings = () => {
           stopAsync: () => {
             newSound.pause();
             newSound.currentTime = 0;
+            return Promise.resolve();
+          },
+          unloadAsync: () => {
+            newSound.pause();
+            newSound.currentTime = 0;
+            newSound.src = '';
             return Promise.resolve();
           }
         };
@@ -145,25 +142,20 @@ const PreviousRecordings = () => {
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
             console.error("❌ Failed to play audio:", err);
+            Alert.alert('Error', 'Could not play recording');
           });
         }
 
-        setCurrentlyPlaying({ uri, sound: soundWrapper });
+        setCurrentlyPlaying({ id: recordingId, sound: soundWrapper });
       } else {
         // Native (mobile) implementation using Expo AV
-        if (currentlyPlaying) {
-          console.log("⏹️ Stopping and unloading current sound");
-          await currentlyPlaying.sound.stopAsync();
-          await currentlyPlaying.sound.unloadAsync(); // unload to reset
-          setCurrentlyPlaying(null);
-        }
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri },
+          { uri: fullUrl },
           { shouldPlay: true }
         );
 
         console.log("📱 Playing sound natively");
-        setCurrentlyPlaying({ uri, sound: newSound });
+        setCurrentlyPlaying({ id: recordingId, sound: newSound });
 
         newSound.setOnPlaybackStatusUpdate((status) => {
           if (status.didJustFinish) {
@@ -178,28 +170,91 @@ const PreviousRecordings = () => {
     }
   };
 
+  const stopPlayback = async () => {
+    if (currentlyPlaying) {
+      await currentlyPlaying.sound.stopAsync();
+      if (currentlyPlaying.sound.unloadAsync) {
+        await currentlyPlaying.sound.unloadAsync();
+      }
+      setCurrentlyPlaying(null);
+    }
+  };
 
-
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.textContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={styles.title}>
+          {item.name || item.title || `Recording ${item.id}`}
+        </Text>
+        <Text style={styles.description}>
+          {item.description || `Recorded on ${formatDate(item.created_at || item.upload_date)}`}
+        </Text>
+        {item.request_title && (
+          <Text style={styles.requestInfo}>
+            Request: {item.request_title}
+          </Text>
+        )}
       </View>
-      <TouchableOpacity style={styles.playIconButton} onPress={() => playRecording(item.file_url)}>
-        <Ionicons name="play-circle" size={46} color="#041575" />
+      <TouchableOpacity 
+        style={styles.playIconButton} 
+        onPress={() => {
+          if (currentlyPlaying?.id === item.id) {
+            stopPlayback();
+          } else {
+            playRecording(item.file_url || item.recording_file, item.id);
+          }
+        }}
+      >
+        <Ionicons 
+          name={currentlyPlaying?.id === item.id ? "stop-circle" : "play-circle"} 
+          size={46} 
+          color="#041575" 
+        />
       </TouchableOpacity>
     </View>
   );
+
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Previous Recordings</Text>
+        <Text style={styles.loadingText}>Loading recordings...</Text>
+      </View>
+    );
+  }
+
+  // Show message if no patient is selected
+  if (!patientId) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Previous Recordings</Text>
+        <Text style={styles.emptyText}>Select a recording request to view previous recordings</Text>
+      </View>
+    );
+  }
 
   return (
     <FlatList
       contentContainerStyle={styles.container}
       data={recordings}
       keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
-      ListHeaderComponent={<Text style={styles.header}>Previous Recordings</Text>}
-      ListEmptyComponent={<Text style={styles.emptyText}>No Recordings yet</Text>}
+      ListHeaderComponent={
+        <Text style={styles.header}>
+          Previous Recordings
+        </Text>
+      }
+      ListEmptyComponent={
+        <Text style={styles.emptyText}>
+          No recordings found for this patient
+        </Text>
+      }
       renderItem={renderItem}
     />
   );
@@ -215,6 +270,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 20,
     color: '#041575',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 20,
   },
   playIconButton: {
     marginTop: 16,
@@ -251,6 +312,12 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginTop: 6,
     lineHeight: 15,
+  },
+  requestInfo: {
+    fontSize: 11,
+    color: '#6366F1',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   button: {
     marginTop: 20,

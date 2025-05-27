@@ -352,3 +352,46 @@ def create_recording_request(request):
     except Exception as e:
         print("Recording request creation error:", e)
         return Response({'error': 'Something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_patient_recordings(request, patient_id):
+    """Get recordings for a specific patient (simplified version)"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        patient_id = int(patient_id)
+        patient = Patient.objects.get(id=patient_id)
+    except (ValueError, TypeError):
+        return Response({'error': 'Invalid patient_id format'}, status=status.HTTP_400_BAD_REQUEST)
+    except Patient.DoesNotExist:
+        return Response({'error': f'Patient with id {patient_id} not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        # Get recordings for this patient
+        recordings = Recording.objects.filter(patient=patient).order_by('-created_at')
+        
+        # Manually serialize the data to match your frontend expectations
+        recordings_data = []
+        for recording in recordings:
+            recording_data = {
+                'id': recording.id,
+                'title': recording.title,
+                'description': recording.description,
+                'file_url': recording.audio_file.url if recording.audio_file else None,
+                'recording_file': recording.audio_file.url if recording.audio_file else None,
+                'created_at': recording.created_at,
+                'upload_date': recording.created_at,
+                'name': recording.title,  # Frontend expects 'name' field
+            }
+            recordings_data.append(recording_data)
+        
+        return Response(recordings_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error retrieving recordings for patient {patient_id}: {e}")
+        return Response(
+            {'error': 'Internal server error'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

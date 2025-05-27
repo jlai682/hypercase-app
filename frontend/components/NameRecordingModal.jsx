@@ -36,11 +36,18 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
     const API_URL = `${config.BACKEND_URL}/api/recordings/upload/`;
 
     console.log("patient:", patient);
+    console.log("request raw:", request);
 
-    const requestObject = JSON.parse(request);
-
-
-    console.log("request:", requestObject);
+    // Safely parse the request
+    let requestObject = null;
+    try {
+        if (request) {
+            requestObject = JSON.parse(request);
+            console.log("request parsed:", requestObject);
+        }
+    } catch (error) {
+        console.error("Error parsing request:", error);
+    }
 
     
 
@@ -88,6 +95,36 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                 formData.append('file', fileBlob, `${name}.webm`);
                 formData.append('title', name);
                 formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
+                
+                // Handle patient ID for web upload
+                try {
+                    let patientId = null;
+                    if (typeof patient === 'string') {
+                        try {
+                            // Try to parse if it's a JSON string
+                            const parsedPatient = JSON.parse(patient);
+                            patientId = parsedPatient.id;
+                        } catch (e) {
+                            // If not a JSON object, might be a direct ID
+                            patientId = patient;
+                        }
+                    } else if (typeof patient === 'object' && patient !== null) {
+                        // If it's already an object
+                        patientId = patient.id;
+                    } else {
+                        // If patient is the ID directly
+                        patientId = patient;
+                    }
+
+                    if (patientId) {
+                        formData.append('patient_id', patientId);
+                        console.log('Adding patient ID to web recording:', patientId);
+                    } else {
+                        console.log('No valid patient ID found for web upload');
+                    }
+                } catch (error) {
+                    console.log('Error processing patient ID for web upload:', error);
+                }
 
                 console.log('Uploading web recording with token:', token.substring(0, 10) + '...');
 
@@ -143,17 +180,33 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                     formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
 
                     try {
-
-                        const patientId = patient.id
+                        // Handle patient ID - safely parse if needed
+                        let patientId = null;
+                        if (typeof patient === 'string') {
+                            try {
+                                // Try to parse if it's a JSON string
+                                const parsedPatient = JSON.parse(patient);
+                                patientId = parsedPatient.id;
+                            } catch (e) {
+                                // If not a JSON object, might be a direct ID
+                                patientId = patient;
+                            }
+                        } else if (typeof patient === 'object' && patient !== null) {
+                            // If it's already an object
+                            patientId = patient.id;
+                        } else {
+                            // If patient is the ID directly
+                            patientId = patient;
+                        }
 
                         if (patientId) {
                             formData.append('patient_id', patientId);
                             console.log('Adding patient ID to recording:', patientId);
                         } else {
-                            console.log('No patient ID found in AsyncStorage');
+                            console.log('No valid patient ID found');
                         }
                     } catch (error) {
-                        console.log('AsyncStorage not available or patient ID not found:', error);
+                        console.log('Error processing patient ID:', error);
                     }
 
                     console.log('Uploading native recording with token:', token.substring(0, 10) + '...');
@@ -253,34 +306,42 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
             setRecordingDuration(0);
 
 
-            if (serverId && requestObject?.id) {
-                console.log("Running")
-                const completeRequestUrl = `${config.BACKEND_URL}/api/recordings/${serverId}/complete-request/`;
-            
-                try {
-                    const response = await fetch(completeRequestUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            request_id: requestObject.id,
-                        }),
-                    });
-            
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('Error completing request:', errorText);
-                        Alert.alert('Failed to complete request', 'The recording was uploaded but the request could not be marked as complete.');
-                    } else {
-                        console.log('Request marked as completed!');
-                        Alert.alert('Success', 'Recording uploaded and request completed.');
-                        router.push('/recordings');
+            // Handle request completion if we have a server ID and valid request object
+            if (serverId) {
+                if (requestObject && requestObject.id) {
+                    console.log("Completing recording request");
+                    const completeRequestUrl = `${config.BACKEND_URL}/api/recordings/${serverId}/complete-request/`;
+                
+                    try {
+                        const response = await fetch(completeRequestUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                request_id: requestObject.id,
+                            }),
+                        });
+                
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('Error completing request:', errorText);
+                            Alert.alert('Failed to complete request', 'The recording was uploaded but the request could not be marked as complete.');
+                        } else {
+                            console.log('Request marked as completed!');
+                            Alert.alert('Success', 'Recording uploaded and request completed.');
+                            router.push('/recordings');
+                        }
+                    } catch (error) {
+                        console.error('Error in complete-request:', error);
+                        Alert.alert('Error', 'Could not complete the recording request.');
                     }
-                } catch (error) {
-                    console.error('Error in complete-request:', error);
-                    Alert.alert('Error', 'Could not complete the recording request.');
+                } else {
+                    // If no request object but upload succeeded
+                    console.log('Recording uploaded successfully');
+                    Alert.alert('Success', 'Recording uploaded successfully.');
+                    router.push('/recordings');
                 }
             }
             

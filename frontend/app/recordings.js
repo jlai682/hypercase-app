@@ -15,13 +15,31 @@ export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
   const router = useRouter();
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const { patient } = useLocalSearchParams();
+  const { patient } = useLocalSearchParams(); 
   const { authState } = useAuth();
   const token = authState.token;
 
   const [recordingRequests, setRecordingRequests] = useState(null);
   const [sentRecordings, setSentRecordings] = useState([]);
   const [completedRecordings, setCompletedRecordings] = useState([]);
+
+  console.log("Patient ID from params:", patient);
+
+  // Parse patient ID if it's passed as a JSON string
+  const getPatientId = () => {
+    if (!patient) return null;
+    
+    try {
+      // If patient is a JSON string, parse it and get the ID
+      const parsedPatient = JSON.parse(patient);
+      return parsedPatient.id;
+    } catch (e) {
+      // If it's already a number/string, use it directly
+      return patient;
+    }
+  };
+
+  const patientId = getPatientId();
 
   useEffect(() => {
     const fetchRecordingInfo = async () => {
@@ -158,7 +176,8 @@ export default function RecordScreen() {
         onSelectRequest={handleSelectRequest}
         patient={patient}
       />
-      <PreviousRecordings />
+      {/* Pass the patient ID directly to PreviousRecordings */}
+      <PreviousRecordings patient={patient} />
     </SafeAreaView>
   );
 }
