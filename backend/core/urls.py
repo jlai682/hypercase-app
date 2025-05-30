@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.api.urls')),
     path('api/', include('recordings.urls')),
+    path('api/recordings/', include('recordings.urls')),
     path('api/patientManagement/', include('patientManagement.urls')),
     path('api/providerManagement/', include('providerManagement.urls')),
     path('api/surveyManagement/', include('surveyManagement.urls')),
@@ -33,6 +34,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 
-# ✅ Serve media files during development
+# Save media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

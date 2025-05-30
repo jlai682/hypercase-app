@@ -42,7 +42,7 @@ class RecordingViewSet(ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='upload')
     def upload_recording(self, request):
-        """Custom action for direct file upload, auto‑converting to MP3."""
+        """Custom action for direct file upload (simplified - no ffmpeg conversion)."""
         # 1) Auth guard
         if not request.user.is_authenticated:
             return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -53,16 +53,18 @@ class RecordingViewSet(ModelViewSet):
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
 
         # 3) Size check
-        if audio_file.size > settings.FILE_UPLOAD_MAX_MEMORY_SIZE:
-            max_mb = settings.FILE_UPLOAD_MAX_MEMORY_SIZE / 1024 / 1024
+        max_size = getattr(settings, 'FILE_UPLOAD_MAX_MEMORY_SIZE', 10485760)  # Default 10MB
+        if audio_file.size > max_size:
+            max_mb = max_size / 1024 / 1024
             return Response(
                 {'error': f'File too large. Max size is {max_mb:.1f}MB'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 4) MIME‑type check
-        if not audio_file.content_type.startswith('audio/'):
-            return Response({'error': 'Invalid file type'}, status=status.HTTP_400_BAD_REQUEST)
+        # 4) MIME‑type check (relaxed - accept any audio or common web formats)
+        allowed_types = ['audio/', 'video/webm', 'video/mp4']  # webm from web recordings
+        if not any(audio_file.content_type.startswith(t) for t in allowed_types):
+            return Response({'error': f'Invalid file type: {audio_file.content_type}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # 5) Resolve patient
         patient = None
@@ -73,67 +75,37 @@ class RecordingViewSet(ModelViewSet):
             except (Patient.DoesNotExist, ValueError):
                 return Response({'error': f'Patient id {pid} invalid'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            if hasattr(request.user, 'patient'):
-                try:
-                    patient = Patient.objects.get(user=request.user)
-                except Patient.DoesNotExist:
-                    return Response({'error': 'No patient profile'}, status=status.HTTP_404_NOT_FOUND)
+            # Try to find patient associated with the user
+            try:
+                patient = Patient.objects.get(user=request.user)
+            except Patient.DoesNotExist:
+                # If no patient found, that's okay - we can save without patient
+                pass
 
-        # 6) Write upload to temp file
-        original_name = get_valid_filename(audio_file.name)
-        tmp_in = os.path.join(settings.MEDIA_ROOT, f"tmp_{uuid.uuid4()}_{original_name}")        
-        with open(tmp_in, 'wb+') as dest:
-            for chunk in audio_file.chunks():
-                dest.write(chunk)
-
-        # 7) Transcode to MP3
-        tmp_out = tmp_in.rsplit('.', 1)[0] + '.mp3'
-        try:
-            subprocess.run([
-                'ffmpeg', '-y', '-i', tmp_in,
-                '-codec:a', 'libmp3lame', '-qscale:a', '2',
-                tmp_out
-            ], check=True)
-        except subprocess.CalledProcessError as e:
-            # cleanup and bail
-            os.remove(tmp_in)
-            return Response({'error': 'ffmpeg conversion failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # 8) Load the MP3 into memory for Django
-        with open(tmp_out, 'rb') as f:
-            mp3_data = f.read()
-        mp3_buffer = io.BytesIO(mp3_data)
-        mp3_size = mp3_buffer.getbuffer().nbytes
-
-        mp3_file = InMemoryUploadedFile(
-            mp3_buffer,
-            field_name='audio_file',
-            name=os.path.basename(tmp_out),
-            content_type='audio/mpeg',
-            size=mp3_size,
-            charset=None
-        )
-
-        # 9) Cleanup temp files
-        os.remove(tmp_in)
-        os.remove(tmp_out)
-
-        # 10) Create and return the Recording
+        # 6) Create Recording directly (no ffmpeg conversion)
         try:
             recording = Recording.objects.create(
                 patient=patient,
-                audio_file=mp3_file,
-                title=request.data.get('title', mp3_file.name),
+                audio_file=audio_file,
+                title=request.data.get('title', audio_file.name or 'Untitled Recording'),
                 description=request.data.get('description', ''),
-                file_size=mp3_size,
-                file_type='audio/mpeg',
+                file_size=audio_file.size,
+                file_type=audio_file.content_type,
             )
-            serializer = self.get_serializer(recording)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as exc:
-            return Response({'error': f'Could not save recording: {exc}'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+            # Return the response in the format your frontend expects
+            return Response({
+                'id': recording.id,
+                'message': 'Recording uploaded successfully',
+                'title': recording.title,
+                'file_url': recording.audio_file.url if recording.audio_file else None
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as exc:
+            logger.error(f'Recording creation error: {exc}')
+            return Response({'error': f'Could not save recording: {str(exc)}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+         
     @action(detail=False, methods=['GET'])
     def by_patient(self, request):
         """Get recordings for a specific patient"""

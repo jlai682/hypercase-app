@@ -1,3 +1,4 @@
+// Updated PreviousRecordings component with better debugging
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -13,15 +14,34 @@ import config from '../config';
 import { useAuth } from '../app/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const PreviousRecordings = ({ patient }) => { // patient should be the patient ID
+const PreviousRecordings = ({ patient }) => {
   const [recordings, setRecordings] = useState([]);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { authState } = useAuth();
   const token = authState.token;
 
-  // patient should already be the ID, but let's ensure it's a number
-  const patientId = patient ? parseInt(patient) : null;
+  // Parse patient ID properly
+  const getPatientId = () => {
+    if (!patient) return null;
+    
+    try {
+      // If patient is a JSON string, parse it and get the ID
+      const parsedPatient = JSON.parse(patient);
+      return parsedPatient.id;
+    } catch (e) {
+      // If it's already a number/string, use it directly
+      return parseInt(patient);
+    }
+  };
+
+  const patientId = getPatientId();
+
+  console.log("🔍 PreviousRecordings Debug:");
+  console.log("- Raw patient prop:", patient);
+  console.log("- Parsed patientId:", patientId);
+  console.log("- Token exists:", !!token);
 
   const isTokenExpired = (token) => {
     if (!token || !isValidJWT(token)) return true;
@@ -43,36 +63,77 @@ const PreviousRecordings = ({ patient }) => { // patient should be the patient I
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!token || isTokenExpired(token) || !patientId) {
+      console.log("🚀 Starting fetchData...");
+      
+      if (!token || isTokenExpired(token)) {
+        console.log("❌ Token invalid or expired");
+        setError("Authentication required");
+        setLoading(false);
+        return;
+      }
+      
+      if (!patientId) {
+        console.log("❌ No patient ID available");
+        setError("No patient selected");
         setLoading(false);
         return;
       }
       
       try {
         setLoading(true);
-        // Updated endpoint to fetch recordings for specific patient
-        const recordingRes = await fetch(`${config.BACKEND_URL}/api/recordings/patient/${patientId}/`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        setError(null);
+        
+        // Try multiple endpoints to see which one works
+        const endpoints = [
+          `/api/recordings/patient/${patientId}/`,
+          `/api/recordings/provider-patient-recordings/?patient_id=${patientId}`,
+          `/api/recordings/by_patient/?patient_id=${patientId}`
+        ];
+        
+        let successfulData = null;
+        let successfulEndpoint = null;
+        
+        for (const endpoint of endpoints) {
+          try {
+            console.log(`🔄 Trying endpoint: ${config.BACKEND_URL}${endpoint}`);
+            
+            const response = await fetch(`${config.BACKEND_URL}${endpoint}`, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
 
-        if (!recordingRes.ok) {
-          if (recordingRes.status === 404) {
-            // No recordings found for this patient
-            setRecordings([]);
-            return;
+            console.log(`📡 Response status for ${endpoint}:`, response.status);
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`✅ Success with ${endpoint}:`, data);
+              successfulData = data;
+              successfulEndpoint = endpoint;
+              break;
+            } else {
+              const errorText = await response.text();
+              console.log(`❌ Error ${response.status} for ${endpoint}:`, errorText);
+            }
+          } catch (endpointError) {
+            console.log(`❌ Network error for ${endpoint}:`, endpointError.message);
           }
-          throw new Error("Failed to get recordings");
+        }
+        
+        if (successfulData) {
+          console.log(`🎉 Using data from ${successfulEndpoint}:`, successfulData);
+          setRecordings(successfulData);
+        } else {
+          console.log("❌ All endpoints failed");
+          setError("Failed to fetch recordings from all endpoints");
+          setRecordings([]);
         }
 
-        const data = await recordingRes.json();
-        setRecordings(data);
-        console.log(`🎙️ Recordings fetched for patient ${patientId}:`, data);
-
       } catch (e) {
-        console.error('Error fetching patient recordings:', e);
+        console.error('❌ Error fetching patient recordings:', e);
+        setError(e.message);
         setRecordings([]);
       } finally {
         setLoading(false);
@@ -80,7 +141,7 @@ const PreviousRecordings = ({ patient }) => { // patient should be the patient I
     };
 
     fetchData();
-  }, [token, patientId]); // Use patientId instead of patient
+  }, [token, patientId]);
 
   const playRecording = async (uri, recordingId) => {
     try {
@@ -98,19 +159,12 @@ const PreviousRecordings = ({ patient }) => { // patient should be the patient I
 
       // Create full URL if it's a relative path
       const fullUrl = uri.startsWith('http') ? uri : `${config.BACKEND_URL}${uri}`;
+      console.log("🌐 Full URL to play:", fullUrl);
 
       if (Platform.OS === 'web') {
         // Web implementation
         const newSound = new window.Audio(fullUrl);
         console.log("🎧 Created Audio element:", newSound);
-
-        // Check if browser supports the type
-        const canPlayMp3 = newSound.canPlayType('audio/mpeg');
-        const canPlayWav = newSound.canPlayType('audio/wav');
-        const canPlayWebm = newSound.canPlayType('audio/webm');
-        console.log(`🧪 canPlayType('audio/mpeg'): ${canPlayMp3}`);
-        console.log(`🧪 canPlayType('audio/wav'): ${canPlayWav}`);
-        console.log(`🧪 canPlayType('audio/webm'): ${canPlayWebm}`);
 
         newSound.onerror = (e) => {
           console.error("❌ Audio load/play error:", e);
@@ -186,39 +240,49 @@ const PreviousRecordings = ({ patient }) => { // patient should be the patient I
     return date.toLocaleString();
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>
-          {item.name || item.title || `Recording ${item.id}`}
-        </Text>
-        <Text style={styles.description}>
-          {item.description || `Recorded on ${formatDate(item.created_at || item.upload_date)}`}
-        </Text>
-        {item.request_title && (
-          <Text style={styles.requestInfo}>
-            Request: {item.request_title}
+  const renderItem = ({ item }) => {
+    console.log("🎵 Rendering recording item:", item);
+    
+    return (
+      <View style={styles.card}>
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>
+            {item.name || item.title || `Recording ${item.id}`}
           </Text>
-        )}
+          <Text style={styles.description}>
+            {item.description || `Recorded on ${formatDate(item.created_at || item.upload_date)}`}
+          </Text>
+          {item.request_title && (
+            <Text style={styles.requestInfo}>
+              Request: {item.request_title}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity 
+          style={styles.playIconButton} 
+          onPress={() => {
+            const fileUrl = item.file_url || item.recording_file || item.audio_file;
+            if (!fileUrl) {
+              Alert.alert('Error', 'No audio file available for this recording');
+              return;
+            }
+            
+            if (currentlyPlaying?.id === item.id) {
+              stopPlayback();
+            } else {
+              playRecording(fileUrl, item.id);
+            }
+          }}
+        >
+          <Ionicons 
+            name={currentlyPlaying?.id === item.id ? "stop-circle" : "play-circle"} 
+            size={46} 
+            color="#041575" 
+          />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity 
-        style={styles.playIconButton} 
-        onPress={() => {
-          if (currentlyPlaying?.id === item.id) {
-            stopPlayback();
-          } else {
-            playRecording(item.file_url || item.recording_file, item.id);
-          }
-        }}
-      >
-        <Ionicons 
-          name={currentlyPlaying?.id === item.id ? "stop-circle" : "play-circle"} 
-          size={46} 
-          color="#041575" 
-        />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   // Show loading state
   if (loading) {
@@ -226,6 +290,18 @@ const PreviousRecordings = ({ patient }) => { // patient should be the patient I
       <View style={styles.container}>
         <Text style={styles.header}>Previous Recordings</Text>
         <Text style={styles.loadingText}>Loading recordings...</Text>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Previous Recordings</Text>
+        <Text style={styles.errorText}>Error: {error}</Text>
+        <Text style={styles.debugText}>Patient ID: {patientId}</Text>
+        <Text style={styles.debugText}>Token: {token ? "Present" : "Missing"}</Text>
       </View>
     );
   }
@@ -247,13 +323,18 @@ const PreviousRecordings = ({ patient }) => { // patient should be the patient I
       keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
       ListHeaderComponent={
         <Text style={styles.header}>
-          Previous Recordings
+          Previous Recordings ({recordings.length} found)
         </Text>
       }
       ListEmptyComponent={
-        <Text style={styles.emptyText}>
-          No recordings found for this patient
-        </Text>
+        <View>
+          <Text style={styles.emptyText}>
+            No recordings found for this patient
+          </Text>
+          <Text style={styles.debugText}>
+            Patient ID: {patientId}
+          </Text>
+        </View>
       }
       renderItem={renderItem}
     />
@@ -276,6 +357,18 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     marginTop: 20,
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   playIconButton: {
     marginTop: 16,
@@ -318,19 +411,6 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     marginTop: 4,
     fontStyle: 'italic',
-  },
-  button: {
-    marginTop: 20,
-    backgroundColor: '#041575',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   emptyText: {
     fontSize: 15,
