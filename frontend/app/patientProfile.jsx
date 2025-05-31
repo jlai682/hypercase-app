@@ -205,31 +205,31 @@ export default function PatientProfile() {
 
   // Fetch recording requests for this patient
   useEffect(() => {
-    // const fetchRecordingRequests = async () => {
-    //   if (patient && token) {
-    //     try {
-    //       const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/by-patient/${patient.id}/`, {
-    //         method: 'GET',
-    //         headers: {
-    //           'Authorization': `Bearer ${token}`,
-    //         },
-    //       });
-
-    //       const data = await response.json();
-    //       if (response.ok) {
-    //         setRecordingRequests(data);  // Set the recording requests data
-    //       } else {
-    //         console.error('Error fetching recording requests:', data.error);
-    //       }
-    //     } catch (error) {
-    //       console.error('Request failed:', error);
-    //     }
-    //   }
-    // };
-
+    const fetchRecordingRequests = async () => {
+      if (patient && token) {
+        try {
+          const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/patient/${patient.id}/`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+  
+          const data = await response.json();
+          if (response.ok) {
+            setRecordingRequests(data);  // Set the recording requests data
+          } else {
+            console.error('Error fetching recording requests:', data.error);
+          }
+        } catch (error) {
+          console.error('Request failed:', error);
+        }
+      }
+    };
+  
     fetchRecordingRequests();
     fetchPreviousRecordings();
-  }, [patient, token]); // Runs when patient data is fetched
+  }, [patient, token]);
 
 
 
@@ -329,15 +329,17 @@ export default function PatientProfile() {
   const fetchRecordingRequests = async () => {
     if (patient) {
       try {
-        const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/by-patient/${patient.id}/`, {
+        const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/patient/${patient.id}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
           },
         });
-
+  
         const data = await response.json();
         if (response.ok) {
+          console.log('🔍 ALL RECORDING REQUESTS:', data); // Debug log
+          console.log('🔍 FIRST REQUEST DETAILS:', data[0]); // Debug log
           setRecordingRequests(data);
         } else {
           console.error('Error fetching recording requests:', data.error);
