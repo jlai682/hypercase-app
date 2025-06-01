@@ -2,6 +2,7 @@ import { StyleSheet, View, Pressable, SafeAreaView, ScrollView, Button, Activity
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import config from "../config";
 import { Text } from 'react-native';
@@ -123,6 +124,16 @@ export default function HomeScreen() {
       console.log("No token found");
     }
   }, [token]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Check token validity when screen comes into focus (including back button)
+      if (!token || isTokenExpired(token)) {
+        console.log('Invalid token detected on focus, logging out...');
+        onLogout(); // This will clear auth and redirect to login
+      }
+    }, [token, onLogout])
+  );
 
   const handleSurveyPress = (survey) => {
     router.push(

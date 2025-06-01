@@ -188,7 +188,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-
     const onLogout = async () => {
         if (Platform.OS === 'web') {
             // For web, clear tokens from localStorage
@@ -199,9 +198,9 @@ export const AuthProvider = ({ children }) => {
             await SecureStore.deleteItemAsync('my-jwt');
             await SecureStore.deleteItemAsync('refreshToken');
         }
-
+    
         setAuthState({ token: null, authenticated: false });
-        router.push('/');
+        router.replace('/');
     };
 
 

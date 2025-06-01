@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Pressable, TextInput, Button } from 'react-nati
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useFocusEffect } from '@react-navigation/native';
 import config from "../config";
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -121,6 +122,16 @@ export default function ProviderDash() {
     fetchProviderPatients();
     fetchProviderInfo();
   }, [token]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Check token validity when screen comes into focus (including back button)
+      if (!token || isTokenExpired(token)) {
+        console.log('Invalid token detected on focus, logging out...');
+        onLogout(); // This will clear auth and redirect to login
+      }
+    }, [token, onLogout])
+  );
 
   // Connect to a patient returned by the search
   const handleConnect = async () => {
