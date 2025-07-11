@@ -10,6 +10,7 @@ import RecordingRequests from '../components/RecordingRequests';
 import PreviousRecordings from '../components/PreviousRecordings';
 import config from '../config';
 import BackButton from '../components/BackButton';
+import NavBar from '@/components/navigation/NavBar'
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
@@ -178,6 +179,7 @@ export default function RecordScreen() {
       />
       {/* Pass the patient ID directly to PreviousRecordings */}
       <PreviousRecordings patient={patient} />
+      <NavBar />
     </SafeAreaView>
   );
 }

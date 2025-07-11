@@ -21,12 +21,27 @@ const NavBar = ({ patient }) => {
     }
   };
 
+  const handleRecordingsPress = () => {
+    if (patient) {
+      router.push({
+        pathname: '/recordings',
+        params: {
+          patient: JSON.stringify(patient)
+        }
+      });
+    } else {
+      // Navigate to profile without data, or show an alert
+      console.log("Warning: Patient data not available");
+      router.push('/patientDash'); // Redirect to dashboard instead
+    }
+  }
+
   return (
     <View style={styles.tabBar}>
       <TouchableOpacity style={styles.tabItem} onPress={() => router.push('../patientDash')}>
         <Ionicons name="home-outline" size={24} color="#333" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.tabItem} onPress={() => router.push('../recordings')}>
+      <TouchableOpacity style={styles.tabItem} onPress={handleRecordingsPress}>
         <Ionicons name="mic-outline" size={24} color="#333" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.tabItem} onPress={handleProfilePress}>
