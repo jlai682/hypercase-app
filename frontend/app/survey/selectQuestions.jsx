@@ -102,27 +102,27 @@ export default function SelectQuestions() {
 
                 <Text style={styles.heading}>Open-ended Questions</Text>
                 {filteredOpenQuestions.map((question) => (
-                    <View
+                    <TouchableOpacity
                         key={question.id}
                         style={[
                             styles.card,
                             selectedOpen.some((q) => q.id === question.id) && styles.selectedCard,
                         ]}
-                        onTouchEnd={() => toggleSelect('open', question)}
+                        onPress={() => toggleSelect('open', question)}
                     >
                         <Text style={styles.questionText}>{question.question_description}</Text>
-                    </View>
+                    </TouchableOpacity>
                 ))}
 
                 <Text style={styles.heading}>Multiple Choice Questions</Text>
                 {filteredMCQuestions.map((question) => (
-                    <View
+                    <TouchableOpacity
                         key={question.id}
                         style={[
                             styles.card,
                             selectedMC.some((q) => q.id === question.id) && styles.selectedCard,
                         ]}
-                        onTouchEnd={() => toggleSelect('mc', question)}
+                        onPress={() => toggleSelect('mc', question)}
                     >
                         <Text style={styles.questionText}>{question.question_description}</Text>
                         {question.options.map((opt) => (
@@ -130,7 +130,7 @@ export default function SelectQuestions() {
                                 • {opt.option}
                             </Text>
                         ))}
-                    </View>
+                    </TouchableOpacity>
                 ))}
 
                 <View style={styles.buttonContainer}>
