@@ -1,5 +1,67 @@
 # Files to ignore
-node_modules
-config.js
-venv
+
+# Dependencies
+node_modules/
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+
+# Python
 *.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+.Python
+*.db
+*.sqlite3
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# React Native / Expo
+.expo/
+.expo-shared/
+*.orig.*
+web-build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+config.js
+
+# Testing
+coverage/
+.nyc_output
+
+# Node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
