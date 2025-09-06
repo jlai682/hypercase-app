@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { useAuth } from './context/AuthContext'; // Import the useAuth hook
 import { useLocalSearchParams } from 'expo-router';
+import BackButton from '../components/BackButton';
 
 const Signup = () => {
     const { onRegister } = useAuth(); // Destructure onRegister from context
@@ -25,7 +26,9 @@ const Signup = () => {
         if (!validateForm()) return;  // Stop if validation fails
         try {
             console.log("Signup type: ", signupType)
+            console.log("update")
             await onRegister(email, password, firstName, lastName, signupType, age); // Call onRegister from context with signupType
+            console.log("On Reg Success")
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -34,11 +37,11 @@ const Signup = () => {
 
     return (
         <View style={styles.container}>
-            {/* Back Button */}
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
+            <View style={{ alignSelf: 'flex-start', marginTop: 60, marginLeft: 30 }}>
+                <BackButton />
+            </View>
 
+            <View style={styles.content}>
             <Text style={styles.title}>{signupType === 'patient' ? 'Patient Signup' : 'Provider Signup'}</Text>
             <TextInput
                 style={styles.input}
@@ -80,6 +83,7 @@ const Signup = () => {
                 <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
         </View>
+    </View>
     );
 };
 
@@ -91,6 +95,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#cae7ff',
         width: '100%',
     },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+      },
     title: {
         fontSize: 35,
         fontFamily: 'Figtree_400Regular',
