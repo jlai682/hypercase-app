@@ -55,7 +55,7 @@ ALLOWED_AUDIO_FORMATS = [
 SECRET_KEY = 'django-insecure-x011-w(n%!k#myx82p+g%1cy92hr(i%a(3lj8#hui2h9x8cqk@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -76,6 +76,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'recordings',
     'surveyManagement',
+    "whitenoise.runserver_nostatic",
+    "django.contrib.staticfiles",
 ]
 
 SIMPLE_JWT = {
@@ -131,6 +133,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://172.20.8.4",         # Example specific IP
     "http://172.20.24.16",       # Example specific IP
     "http://192.168.1.160",
+    "http://172.20.94.74:8000"
     # Add more IPs as needed for testing on different devices
     # For example, if testing on a phone connected to your local network:
     # You may also need to add entries for your machine's actual IP address
@@ -164,6 +167,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'recordings.middleware.AddAcceptRangesHeaderMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = 'core.urls'
