@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'recordings',
     'surveyManagement',
     "whitenoise.runserver_nostatic",
-    "django.contrib.staticfiles",
 ]
 
 SIMPLE_JWT = {
