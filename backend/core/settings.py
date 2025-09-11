@@ -193,23 +193,22 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-import os
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hypercase',  # Replace with your database name
-        'USER': 'postgres',            # Replace with your PostgreSQL username
-        'PASSWORD': 'hypercase123',   # Replace with your PostgreSQL password
-        'HOST': '127.0.0.1',       # Use your local IP address here
-        'PORT': '5432',                # The default PostgreSQL port
+import dj_database_url
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        'default': dj_database_url.config(default=os.environ["DATABASE_URL"])
     }
-}
-
-
-
-
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'hypercase',  # Replace with your database name
+            'USER': 'postgres',            # Replace with your PostgreSQL username
+            'PASSWORD': 'hypercase123',   # Replace with your PostgreSQL password
+            'HOST': '127.0.0.1',       # Use your local IP address here
+            'PORT': '5432',                # The default PostgreSQL port
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
