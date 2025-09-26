@@ -4,8 +4,7 @@ class AddAcceptRangesHeaderMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        response = self.get_response(request)
-        # Only add to audio responses
-        if response.get('Content-Type', '').startswith('audio/'):
-            response['Accept-Ranges'] = 'bytes'
-        return response
+            response = self.get_response(request)
+            if request.path.startswith('/media/'):
+                response['Accept-Ranges'] = 'bytes'
+            return response
