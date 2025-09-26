@@ -22,6 +22,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings  # ✅ Import settings
 from django.conf.urls.static import static  # ✅ Import static
 
+from django.views.static import serve
+from django.urls import re_path
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.api.urls')),
@@ -34,6 +37,10 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 
-# Save media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # Serve media in production (not recommended long-term)
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]
