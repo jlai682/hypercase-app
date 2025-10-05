@@ -166,7 +166,8 @@ CORS_ALLOW_METHODS = [
 
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  
+    'corsheaders.middleware.CorsMiddleware',
+    'recordings.middleware.AddAcceptRangesHeaderMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -174,7 +175,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'recordings.middleware.AddAcceptRangesHeaderMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
