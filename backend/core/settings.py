@@ -118,8 +118,14 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'cache-control',
     'pragma',
-    'Authorization'
+    'Authorization',
+    'range'
+]
 
+CORS_EXPOSE_HEADERS = [
+    'content-length',
+    'content-range',
+    'accept-ranges',
 ]
 '''
 CORS_ALLOWED_ORIGINS = [
