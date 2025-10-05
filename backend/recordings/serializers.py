@@ -30,11 +30,23 @@ class RecordingSerializer(serializers.ModelSerializer):
         read_only_fields = ['file_size', 'file_type', 'created_at']
     
     def get_file_url(self, obj):
-        """Return the absolute URL to the audio file."""
+        """Return the absolute URL to the audio file with HTTPS."""
         if obj.audio_file:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.audio_file.url)
+                # Build the absolute URI
+                url = request.build_absolute_uri(obj.audio_file.url)
+                
+                # Force HTTPS in production (Railway uses HTTPS)
+                if not settings.DEBUG and url.startswith('http://'):
+                    url = url.replace('http://', 'https://', 1)
+                
+                return url
+            
+            # Fallback: construct URL manually if no request context
+            if not settings.DEBUG:
+                # In production, use HTTPS
+                return f"https://{settings.ALLOWED_HOSTS[0]}{obj.audio_file.url}"
             return obj.audio_file.url
         return None
     
