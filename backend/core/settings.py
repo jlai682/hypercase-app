@@ -121,7 +121,7 @@ CORS_ALLOW_HEADERS = [
     'Authorization'
 
 ]
-
+'''
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",     # If using React
     "http://localhost:8000",     # Django dev server
@@ -140,7 +140,7 @@ CORS_ALLOWED_ORIGINS = [
     # For example, if testing on a phone connected to your local network:
     # You may also need to add entries for your machine's actual IP address
 ]
-
+'''
 # For development, you might want to allow all origins
 # CORS_ALLOW_ALL_ORIGINS = True
 
