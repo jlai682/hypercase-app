@@ -367,3 +367,133 @@ def get_patient_recordings(request, patient_id):
             {'error': 'Internal server error'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    
+import re
+from django.http import StreamingHttpResponse, HttpResponse, Http404
+from django.conf import settings
+from django.views.decorators.http import require_http_methods
+
+
+# ADD THIS ENTIRE FUNCTION to recordings/views.py
+@require_http_methods(["GET", "HEAD", "OPTIONS"])
+def serve_recording(request, file_path):
+    """
+    Custom view to serve audio recordings with proper range request support.
+    This ensures iOS AVPlayer can stream the audio files.
+    """
+    # Handle OPTIONS for CORS
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'GET, HEAD, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Range, Accept, Accept-Encoding, Authorization'
+        response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
+        response['Access-Control-Max-Age'] = '86400'
+        return response
+    
+    # Construct full file path
+    full_path = os.path.join(settings.MEDIA_ROOT, 'recordings', file_path)
+    
+    # Security check: ensure path doesn't escape media root
+    if not os.path.abspath(full_path).startswith(os.path.abspath(settings.MEDIA_ROOT)):
+        raise Http404("Invalid file path")
+    
+    # Check if file exists
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        raise Http404("Recording not found")
+    
+    # Get file size
+    file_size = os.path.getsize(full_path)
+    
+    # Determine content type
+    content_type = 'application/octet-stream'
+    if full_path.endswith('.m4a'):
+        content_type = 'audio/x-m4a'
+    elif full_path.endswith('.mp3'):
+        content_type = 'audio/mpeg'
+    elif full_path.endswith('.wav'):
+        content_type = 'audio/wav'
+    elif full_path.endswith('.mp4'):
+        content_type = 'audio/mp4'
+    
+    # Handle HEAD request
+    if request.method == 'HEAD':
+        response = HttpResponse()
+        response['Content-Type'] = content_type
+        response['Content-Length'] = str(file_size)
+        response['Accept-Ranges'] = 'bytes'
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
+        return response
+    
+    # Parse Range header
+    range_header = request.META.get('HTTP_RANGE', '').strip()
+    
+    if range_header and range_header.startswith('bytes='):
+        # Handle range request
+        range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+        if not range_match:
+            response = HttpResponse(status=400)
+            response['Content-Type'] = content_type
+            return response
+        
+        start = int(range_match.group(1))
+        end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+        
+        # Validate range
+        if start >= file_size or end >= file_size or start > end:
+            response = HttpResponse(status=416)  # Range Not Satisfiable
+            response['Content-Range'] = f'bytes */{file_size}'
+            response['Content-Type'] = content_type
+            return response
+        
+        # Calculate content length
+        content_length = end - start + 1
+        
+        # Create streaming iterator
+        def file_iterator(chunk_size=8192):
+            with open(full_path, 'rb') as f:
+                f.seek(start)
+                remaining = content_length
+                while remaining > 0:
+                    chunk = f.read(min(chunk_size, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
+        
+        # Create 206 Partial Content response
+        response = StreamingHttpResponse(
+            file_iterator(),
+            status=206,
+            content_type=content_type
+        )
+        
+        response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+        response['Content-Length'] = str(content_length)
+        response['Accept-Ranges'] = 'bytes'
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
+        
+        return response
+    
+    # No range request - return full file
+    def file_iterator(chunk_size=8192):
+        with open(full_path, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+    
+    response = StreamingHttpResponse(
+        file_iterator(),
+        content_type=content_type
+    )
+    
+    response['Content-Length'] = str(file_size)
+    response['Accept-Ranges'] = 'bytes'
+    response['Access-Control-Allow-Origin'] = '*'
+    response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
+    
+    return response

@@ -129,6 +129,7 @@ CORS_EXPOSE_HEADERS = [
     'content-length',
     'content-range',
     'accept-ranges',
+    'content-type',
 ]
 '''
 CORS_ALLOWED_ORIGINS = [
@@ -169,16 +170,15 @@ CORS_ALLOW_METHODS = [
 
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'recordings.middleware.AddAcceptRangesHeaderMiddleware', 
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be here
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -263,4 +263,9 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Static files configuration
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# WhiteNoise should NOT serve media files (only static)
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True if DEBUG else False

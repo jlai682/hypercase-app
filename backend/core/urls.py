@@ -19,11 +19,12 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from django.conf import settings  # ✅ Import settings
-from django.conf.urls.static import static  # ✅ Import static
-
-from django.views.static import serve
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import re_path
+
+# Import the custom recording serve view
+from recordings.views import serve_recording
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -35,12 +36,16 @@ urlpatterns = [
     path('api/surveyManagement/', include('surveyManagement.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
+    # Custom view for serving recordings with range request support (iOS)
+    re_path(r'^media/recordings/(?P<file_path>.+)$', serve_recording, name='serve_recording'),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 else:
-    # Serve media in production (not recommended long-term)
+    from django.views.static import serve
+    # Generic media serving for non-recording files
     urlpatterns += [
         re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     ]
