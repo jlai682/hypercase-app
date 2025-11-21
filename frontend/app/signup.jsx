@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
-import { useAuth } from './context/AuthContext'; // Import the useAuth hook
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  StyleSheet,
+  KeyboardAvoidingView,   
+  Platform,               
+  ScrollView               
+} from 'react-native';
+import { useAuth } from './context/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
 import BackButton from '../components/BackButton';
 
 const Signup = () => {
-    const { onRegister } = useAuth(); // Destructure onRegister from context
-    const { signupType } = useLocalSearchParams(); // Get the signup type from params
+    const { onRegister } = useAuth();
+    const { signupType } = useLocalSearchParams();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -23,11 +33,10 @@ const Signup = () => {
     };
 
     const handleSignup = async () => {
-        if (!validateForm()) return;  // Stop if validation fails
+        if (!validateForm()) return;
         try {
             console.log("Signup type: ", signupType)
-            console.log("update")
-            await onRegister(email, password, firstName, lastName, signupType, age); // Call onRegister from context with signupType
+            await onRegister(email, password, firstName, lastName, signupType, age);
             console.log("On Reg Success")
         } catch (error) {
             console.error(error);
@@ -36,71 +45,80 @@ const Signup = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView 
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <View style={{ alignSelf: 'flex-start', marginTop: 60, marginLeft: 30 }}>
                 <BackButton />
             </View>
 
-            <View style={styles.content}>
-            <Text style={styles.title}>{signupType === 'patient' ? 'Patient Signup' : 'Provider Signup'}</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="First Name"
-                value={firstName}
-                onChangeText={setFirstName}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Last Name"
-                value={lastName}
-                onChangeText={setLastName}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-            />
-            {signupType === 'patient' && (
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                <Text style={styles.title}>
+                    {signupType === 'patient' ? 'Patient Signup' : 'Provider Signup'}
+                </Text>
+                
                 <TextInput
                     style={styles.input}
-                    placeholder="Age"
-                    value={age}
-                    onChangeText={setAge}
-                    keyboardType="numeric"
+                    placeholder="First Name"
+                    value={firstName}
+                    onChangeText={setFirstName}
                 />
-            )}
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-            />
-            <TouchableOpacity style={styles.button} onPress={handleSignup}>
-                <Text style={styles.buttonText}>Sign Up</Text>
-            </TouchableOpacity>
-        </View>
-    </View>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Last Name"
+                    value={lastName}
+                    onChangeText={setLastName}
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+                {signupType === 'patient' && (
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Age"
+                        value={age}
+                        onChangeText={setAge}
+                        keyboardType="numeric"
+                    />
+                )}
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                />
+                <TouchableOpacity style={styles.button} onPress={handleSignup}>
+                    <Text style={styles.buttonText}>Sign Up</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         backgroundColor: '#cae7ff',
-        width: '100%',
     },
-    content: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        width: '100%',
-      },
+        paddingVertical: 20,
+        paddingBottom: 40,  // Extra padding at bottom
+    },
     title: {
         fontSize: 35,
         fontFamily: 'Figtree_400Regular',
@@ -113,7 +131,6 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 15,
         backgroundColor: '#fff',
-        placeholderTextColor: "rgba(0, 0, 0, 0.4)",
     },
     button: {
         width: 300,
@@ -123,15 +140,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 10,
         marginVertical: 10,
+        marginBottom: 20,  // Extra margin at bottom
     },
     buttonText: {
         color: '#fff',
         fontSize: 16,
         fontFamily: 'Figtree_400Regular',
-    },
-    backButtonText: {
-        fontSize: 18,
-        color: '#041575',
     },
 });
 
