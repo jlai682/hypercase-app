@@ -148,6 +148,7 @@ export const AuthProvider = ({ children }) => {
             const endpoint = loginType === 'provider'
                 ? `${config.BACKEND_URL}/api/providerManagement/login/`
                 : `${config.BACKEND_URL}/api/patientManagement/login/`;
+            console.log(endpoint)
 
             const response = await fetch(endpoint, {
                 method: 'POST',
