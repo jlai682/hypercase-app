@@ -29,11 +29,11 @@
   - Error handling with try/except and appropriate status codes
  
 ## Working with the main branch
-  - **Frontend**
+  - **Frontend**:
   - cd frontend && npx expo start
-  - * You do not need to set up the backend
-  - **Making Edits**
+  - You do not need to set up the backend
+  - **Making Edits**:
   - Change the BACKEND_URL in frontend/config.js to 'http://<your_ip_addr>:8000'
   - In backend/settings.py, set DEBUG_MODE = True
   - Run the same frontend and backend configuration as above
-  - * DO NOT commit backend changes to the main branch! Railway will automatically redeploy on every commit, so either use the secondary branch or message me about it
+  - DO NOT commit backend changes to the main branch! Railway will automatically redeploy on every commit, so either use the secondary branch or wait until the next software team meeting
