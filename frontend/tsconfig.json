@@ -2,7 +2,7 @@
     "compilerOptions": {
       "baseUrl": ".",
       "paths": {
-        "@/*": ["*"] // Adjust 'src' as needed
+        "@/*": ["*"]
       }
     },
   
@@ -12,5 +12,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "app/context/AuthContext.jsx"  ]
+  ]
 }
