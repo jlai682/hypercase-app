@@ -97,7 +97,7 @@ export default function HomeScreen() {
         console.log("Surveys Data received: ", surveysData);
 
         const providerResponse = await fetch(`${config.BACKEND_URL}/api/providerManagement/get_provider_by_patient/`, {
-          method: 'POST',
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,

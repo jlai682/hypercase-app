@@ -144,7 +144,7 @@ def patient_profile(request):
             "medical_history": patient.medical_history,
             "address": patient.address,
             "phone_number": patient.phone_number,
-            "email": patient.email,
+            "email": patient.user.email,
             "id": patient.id,
         }
         return Response(patient_data)
