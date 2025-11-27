@@ -58,9 +58,9 @@ ALLOWED_AUDIO_FORMATS = [
 SECRET_KEY = 'django-insecure-x011-w(n%!k#myx82p+g%1cy92hr(i%a(3lj8#hui2h9x8cqk@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-if not DEBUG:
+if os.environ.get('PRODUCTION') == 'true':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 ALLOWED_HOSTS = ['*']

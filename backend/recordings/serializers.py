@@ -1,21 +1,25 @@
+import logging
+from typing import Dict, Any, Optional
 from rest_framework import serializers
-from .models import Recording, RecordingRequest
-from patientManagement.models import Patient
-from providerManagement.models import Provider
 from django.conf import settings
 from django.utils import timezone
 
+from .models import Recording, RecordingRequest
+from patientManagement.models import Patient
+from providerManagement.models import Provider
 
+logger = logging.getLogger(__name__)
+
+# Handles recording uploads (completes recording requests)
 class RecordingSerializer(serializers.ModelSerializer):
     """Serializer for Recording model."""
     file_url = serializers.SerializerMethodField()
     patient_id = serializers.PrimaryKeyRelatedField(
         queryset=Patient.objects.all(),
         source='patient',
-        required=False,
-        allow_null=True
+        required=True,
+        allow_null=False
     )
-    # Add a reference to the request
     request_id = serializers.PrimaryKeyRelatedField(
         source='request',
         read_only=True
@@ -31,24 +35,26 @@ class RecordingSerializer(serializers.ModelSerializer):
     
     def get_file_url(self, obj):
         """Return the absolute URL to the audio file with HTTPS."""
-        if obj.audio_file:
-            request = self.context.get('request')
-            if request:
-                # Build the absolute URI
+        if not obj.audio_file:
+            return None
+        
+        request = self.context.get('request')
+        if request:
+            try:
                 url = request.build_absolute_uri(obj.audio_file.url)
-                
-                # Force HTTPS in production (Railway uses HTTPS)
+                # Force HTTPS in production
                 if not settings.DEBUG and url.startswith('http://'):
                     url = url.replace('http://', 'https://', 1)
-                
                 return url
-            
-            # Fallback: construct URL manually if no request context
-            if not settings.DEBUG:
-                # In production, use HTTPS
-                return f"https://{settings.ALLOWED_HOSTS[0]}{obj.audio_file.url}"
-            return obj.audio_file.url
-        return None
+            except Exception as e:
+                logger.warning(f"Failed to build absolute URI: {e}")
+
+        # Fallback: use configured MEDIA_URL_BASE or construct from settings
+        media_base = getattr(settings, 'MEDIA_URL_BASE', None)
+        if media_base:
+            return f"{media_base}{obj.audio_file.url}"
+        
+        return obj.audio_file.url
     
     def create(self, validated_data):
         """Create a new recording with file metadata."""
@@ -62,20 +68,29 @@ class RecordingSerializer(serializers.ModelSerializer):
         recording = Recording.objects.create(**validated_data)
         
         # Check if this recording is for a request and mark it as completed
-        request_id = self.context.get('request').data.get('request_id') if self.context.get('request') else None
-        if request_id:
-            try:
-                recording_request = RecordingRequest.objects.get(id=request_id)
-                recording_request.recording = recording
-                recording_request.status = 'completed'
-                recording_request.response_date = timezone.now()
-                recording_request.save()
-            except RecordingRequest.DoesNotExist:
-                pass
+        request = self.context.get('request')
+        if request and hasattr(request, 'data'):
+            request_id = request.data.get('request_id')
+            if request_id:
+                try:
+                    recording_request = RecordingRequest.objects.get(id=request_id)
+                    if recording.patient_id == recording_request.patient_id:
+                        recording_request.recording = recording
+                        recording_request.status = 'completed'
+                        recording_request.response_date = timezone.now()
+                        recording_request.save()
+                    else:
+                        logger.warning(
+                            f"Request {request_id} does not belong to patient {recording.patient_id}"
+                        )
+                except RecordingRequest.DoesNotExist:
+                    logger.warning(f"RecordingRequest {request_id} not found")
+                except Exception as e:
+                    logger.error(f"Failed to link recording to request: {e}")
         
         return recording
 
-
+# Handles individual recording requests
 class RecordingRequestSerializer(serializers.ModelSerializer):
     """Serializer for RecordingRequest model."""
     patient_id = serializers.PrimaryKeyRelatedField(
@@ -91,28 +106,32 @@ class RecordingRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecordingRequest
         fields = [
-            'id', 'title', 'description', 'issue_date', 'response_date',
+            'id', 'title', 'description', 'issue_date', 'due_date', 'response_date',
             'patient_id', 'provider_id', 'status', 'recording'
         ]
         read_only_fields = ['issue_date', 'response_date', 'status']
     
     def create(self, validated_data):
         """Create a new recording request."""
-        # Set status to 'sent' by default
         validated_data['status'] = 'sent'
         return RecordingRequest.objects.create(**validated_data)
+    
 
-# For listing requests by status
+# Simplified version for listing requests (doesn't include full Recording nested data)
 class RecordingRequestListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing RecordingRequests."""
+    patient_id = serializers.IntegerField(source='patient.id', read_only=True)
+    provider_id = serializers.IntegerField(source='provider.id', read_only=True)
     patient_name = serializers.SerializerMethodField()
     provider_name = serializers.SerializerMethodField()
+    is_overdue = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = RecordingRequest
         fields = [
-            'id', 'title', 'issue_date', 'response_date',
-            'patient_id', 'patient_name', 'provider_id', 'provider_name', 'status'
+            'id', 'title', 'description', 'issue_date', 'due_date', 'response_date',
+            'patient_id', 'patient_name', 'provider_id', 'provider_name', 
+            'status', 'is_overdue'
         ]
     
     def get_patient_name(self, obj):

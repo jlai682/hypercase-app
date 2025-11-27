@@ -16,28 +16,35 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import re_path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework.routers import DefaultRouter
 
-# Import the custom recording serve view
 from recordings.views import serve_recording
+from signatures.api.urls import sig_router
+
+# Main API router (for ViewSet-based apps)
+router = DefaultRouter()
+router.registry.extend(sig_router.registry)
 
 urlpatterns = [
+    # Admin
     path('admin/', admin.site.urls),
-    path('api/', include('core.api.urls')),
-    path('api/', include('recordings.urls')),
+
+    # JWT Authentication
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # API Routes
+    path('api/', include(router.urls)),  # ViewSet routers (signatures)
     path('api/recordings/', include('recordings.urls')),
     path('api/patientManagement/', include('patientManagement.urls')),
     path('api/providerManagement/', include('providerManagement.urls')),
     path('api/surveyManagement/', include('surveyManagement.urls')),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    
-    # Custom view for serving recordings with range request support (iOS)
+
+    # Custom media serving for recordings (iOS range request support)
     re_path(r'^media/recordings/(?P<file_path>.+)$', serve_recording, name='serve_recording'),
 ]
 
