@@ -2,14 +2,19 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-const BackButton = ({ route }) => {
+// Define the props type
+type BackButtonProps = {
+  route?: string;
+};
+
+const BackButton = ({ route }: BackButtonProps) => {
   const navigation = useNavigation();
 
   const handlePress = () => {
     if (route) {
-      navigation.navigate(route); // Navigate to the provided route
+      navigation.navigate(route as never); // Type assertion to fix the navigation type issue
     } else {
-      navigation.goBack(); // Default to going back if no route is provided
+      navigation.goBack();
     }
   };
 
