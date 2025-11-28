@@ -42,7 +42,7 @@ export default function ProfileScreen() {
       <ScrollView style={styles.scrollView}>
         <View style={styles.profileContainer}>
         <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
-        <BackButton />
+        <BackButton route='providerDash'/>
       </View>
           <View style={styles.avatarContainer}>
             <Image

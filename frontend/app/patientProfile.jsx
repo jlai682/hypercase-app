@@ -7,7 +7,7 @@ import { Image } from 'react-native';
 import profile from '../assets/images/profile.png';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
-import BackButton from '@/components/BackButton'; // Import the BackButton component
+import BackButton from '@/components/BackButton';  
 import { Audio } from 'expo-av';
 
 
@@ -435,7 +435,7 @@ export default function PatientProfile() {
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10, marginBottom: 10 }}>
-          <BackButton />
+          <BackButton route="providerDash"/>
         </View>
         <View style={styles.header}>
           <Image source={profile} style={styles.profileImage} />
