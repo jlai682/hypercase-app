@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import config from '../config';
 import { useAuth } from "./context/AuthContext";
 import { SafeAreaView } from 'react-native';
-import { StyleSheet, Platform, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput } from 'react-native';
+import { StyleSheet, Platform, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput, Button } from 'react-native';
 import { Image } from 'react-native';
 import profile from '../assets/images/profile.png';
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -19,12 +19,14 @@ export default function PatientProfile() {
   const [recordingRequests, setRecordingRequests] = useState([]); // State for recording requests
   const [error, setError] = useState(null);
   const [previousRecordings, setPreviousRecordings] = useState([]);
-  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const currentlyPlayingRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
 
   // For the request modal
   const [modalVisible, setModalVisible] = useState(false);
   const [requestTitle, setRequestTitle] = useState('');
+  const [dueDate, setDueDate] = useState(new Date());
 
   const router = useRouter();
 
@@ -37,16 +39,15 @@ export default function PatientProfile() {
       console.log("🔊 Attempting to play URI:", uri);
 
       // Stop currently playing recording if any
-      if (currentlyPlaying) {
-        console.log("⏹️ Stopping currently playing audio");
-        await currentlyPlaying.sound.stopAsync();
-        await currentlyPlaying.sound.unloadAsync();  // 🔥 This is key
-        setCurrentlyPlaying(null);
-      }
+      await stopPlayback();
+
+      // Create full URL if it's a relative path
+      const fullUrl = uri.startsWith('http') ? uri : `${config.BACKEND_URL}${uri}`;
+      console.log("🌐 Full URL to play:", fullUrl);
 
       if (Platform.OS === 'web') {
         // Web implementation
-        const newSound = new window.Audio(uri);
+        const newSound = new window.Audio(fullUrl);
         console.log("🎧 Created Audio element:", newSound);
 
         // Check if browser supports the type
@@ -65,12 +66,19 @@ export default function PatientProfile() {
             newSound.pause();
             newSound.currentTime = 0;
             return Promise.resolve();
+          },
+          unloadAsync: () => {
+            newSound.pause();
+            newSound.currentTime = 0;
+            newSound.src = '';
+            return Promise.resolve();
           }
         };
 
         newSound.onended = () => {
           console.log("✅ Finished playing audio");
-          setCurrentlyPlaying(null);
+          currentlyPlayingRef.current = null;  // ✅ Use ref
+          setIsPlaying(false);  // ✅ Update UI state
         };
 
         const playPromise = newSound.play();
@@ -81,27 +89,24 @@ export default function PatientProfile() {
           });
         }
 
-        setCurrentlyPlaying({ uri, sound: soundWrapper });
+        currentlyPlayingRef.current = { uri: fullUrl, sound: soundWrapper };  // ✅ Use ref
+        setIsPlaying(true);  // ✅ Update UI state
       } else {
         // Native (mobile) implementation using Expo AV
-        if (currentlyPlaying) {
-          console.log("⏹️ Stopping and unloading current sound");
-          await currentlyPlaying.sound.stopAsync();
-          await currentlyPlaying.sound.unloadAsync(); // unload to reset
-          setCurrentlyPlaying(null);
-        }
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri },
+          { uri: fullUrl },
           { shouldPlay: true }
         );
 
         console.log("📱 Playing sound natively");
-        setCurrentlyPlaying({ uri, sound: newSound });
+        currentlyPlayingRef.current = { uri: fullUrl, sound: newSound };  // ✅ Use ref
+        setIsPlaying(true);  // ✅ Update UI state
 
         newSound.setOnPlaybackStatusUpdate((status) => {
           if (status.didJustFinish) {
             console.log("✅ Native audio finished");
-            setCurrentlyPlaying(null);
+            currentlyPlayingRef.current = null;  // ✅ Use ref
+            setIsPlaying(false);  // ✅ Update UI state
           }
         });
       }
@@ -111,8 +116,20 @@ export default function PatientProfile() {
     }
   };
 
-
-
+  const stopPlayback = async () => {
+  if (currentlyPlayingRef.current) {
+    try {
+      await currentlyPlayingRef.current.sound.stopAsync();
+      if (currentlyPlayingRef.current.sound.unloadAsync) {
+        await currentlyPlayingRef.current.sound.unloadAsync();
+      }
+    } catch (err) {
+      console.error('Error stopping playback:', err);
+    }
+    currentlyPlayingRef.current = null;
+    setIsPlaying(false);
+  }
+};
   useEffect(() => {
     const fetchPatient = async () => {
       if (!token || !patientEmail) return;
@@ -180,11 +197,11 @@ export default function PatientProfile() {
       return
     }
     try {
-      const response = await fetch(`${config.BACKEND_URL}/api/recordings/provider-patient-recordings/?patient_id=${patient.id}`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/recordings/patient/${patient.id}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,  // or use 'Cookie': 'sessionid=...' if you're using session authentication
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -266,7 +283,8 @@ export default function PatientProfile() {
         body: JSON.stringify({
           patient_id: patient.id,
           title: requestTitle,
-          description: "Please record your voice and submit it."
+          description: "Please record your voice and submit it.",
+          due_date: dueDate.toISOString()
         }),
       });
 
@@ -277,6 +295,7 @@ export default function PatientProfile() {
         fetchRecordingRequests();
         // Reset form and close modal
         setRequestTitle('');
+        setDueDate(new Date());
         setModalVisible(false);
       } else {
         Alert.alert("Error", data.error || "Failed to send recording request");
@@ -329,7 +348,7 @@ export default function PatientProfile() {
   const fetchRecordingRequests = async () => {
     if (patient) {
       try {
-        const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/by-patient/${patient.id}/`, {
+        const response = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/patient/${patient.id}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -348,17 +367,48 @@ export default function PatientProfile() {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, []);
+
+  const renderItem = ({ item }) => {
+    const itemIsPlaying = isPlaying && 
+      currentlyPlayingRef.current?.uri && 
+      item.file_url && 
+      currentlyPlayingRef.current.uri.includes(item.file_url);
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.description}>{item.description}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.playIconButton}
+          onPress={() => {
+            if (itemIsPlaying) {   
+              stopPlayback();
+            } else {
+              const fileUrl = item.file_url || item.recording_file || item.audio_file;
+              if (!fileUrl) {
+                Alert.alert('Error', 'No audio file available for this recording');
+                return;
+              }
+              playRecording(fileUrl);
+            }
+          }}
+        >
+          <Ionicons
+            name={itemIsPlaying ? "stop-circle" : "play-circle"}   
+            size={46}
+            color="#041575"
+          />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.playIconButton} onPress={() => playRecording(item.audio_file)}>
-        <Ionicons name="play-circle" size={46} color="#041575" />
-      </TouchableOpacity>
-    </View>
-  )
+    );
+  }
 
     // Define a function for rendering the list of surveys and recording requests
   const renderSurveySection = (title, data, onPress) => (
@@ -455,7 +505,12 @@ export default function PatientProfile() {
                   onPress={() => handleRecordingRequestPress(item)}
                 >
                   <Text style={styles.surveyTitle}>{item.title}</Text>
-                  <Text style={styles.surveyDate}>{new Date(item.issue_date).toLocaleDateString()}</Text>
+                  <Text style={styles.surveyDate}>Issued: {new Date(item.issue_date).toLocaleDateString()}</Text>
+                  {item.due_date && (
+                    <Text style={styles.dueDateText}>
+                      Due: {new Date(item.due_date).toLocaleDateString()} at {new Date(item.due_date).toLocaleTimeString()}
+                    </Text>
+                  )}
                 </Pressable>
               )}
             />
@@ -505,10 +560,50 @@ export default function PatientProfile() {
                 value={requestTitle}
                 onChangeText={setRequestTitle}
               />
+              <View style={styles.datePickerContainer}>
+                <Text style={styles.dateLabel}>Due Date:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={dueDate.toLocaleString()}
+                  editable={false}
+                />
+                <View style={styles.dateButtonsRow}>
+                  <Pressable
+                    style={styles.dateButton}
+                    onPress={() => {
+                      const newDate = new Date(dueDate);
+                      newDate.setDate(newDate.getDate() + 1);
+                      setDueDate(newDate);
+                    }}
+                  >
+                    <Text style={styles.dateButtonText}>+1 Day</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.dateButton}
+                    onPress={() => {
+                      const newDate = new Date(dueDate);
+                      newDate.setDate(newDate.getDate() + 7);
+                      setDueDate(newDate);
+                    }}
+                  >
+                    <Text style={styles.dateButtonText}>+1 Week</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.dateButton}
+                    onPress={() => setDueDate(new Date())}
+                  >
+                    <Text style={styles.dateButtonText}>Reset</Text>
+                  </Pressable>
+                </View>
+              </View>
               <View style={styles.modalButtons}>
                 <Pressable
                   style={[styles.button, styles.buttonCancel]}
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    setModalVisible(false);
+                    setRequestTitle('');
+                    setDueDate(new Date());
+                  }}
                 >
                   <Text style={styles.textStyle}>Cancel</Text>
                 </Pressable>
@@ -596,6 +691,12 @@ const styles = StyleSheet.create({
     marginTop: 5,
     color: '#666',
   },
+  dueDateText: {
+    marginTop: 5,
+    color: '#DC2626',
+    fontWeight: '600',
+    fontSize: 14,
+  },
   surveyButton: {
     marginTop: 20,
     backgroundColor: '#041575',
@@ -654,6 +755,35 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 20,
+  },
+  datePickerContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  dateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#041575',
+    marginBottom: 8,
+  },
+  dateButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  dateButton: {
+    flex: 1,
+    backgroundColor: '#1565C0',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+  dateButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalButtons: {
     flexDirection: 'row',
