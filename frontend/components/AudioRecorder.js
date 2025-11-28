@@ -228,8 +228,29 @@ export default function AudioRecorder({ sentRequests, completedRequests }) {
           playsInSilentModeIOS: true,
         });
 
+        // Use iOS-compatible recording format (M4A/AAC) instead of HIGH_QUALITY preset
+        const recordingOptions = {
+          isMeteringEnabled: true,
+          android: {
+            extension: '.m4a',
+            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+            audioEncoder: Audio.AndroidAudioEncoder.AAC,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+          },
+          ios: {
+            extension: '.m4a',
+            outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+            audioQuality: Audio.IOSAudioQuality.HIGH,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+          },
+        };
+
         const { recording: newRecording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
+          recordingOptions
         );
 
         setRecording(newRecording);
