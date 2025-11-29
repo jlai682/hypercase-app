@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import config from "../config";
 import { Text } from 'react-native';
 import NavBar from '../components/navigation/NavBar';
+import LoggedOutView from '../components/LoggedOutView';
 
 import { useAuth } from "./context/AuthContext";
 
@@ -57,6 +58,9 @@ export default function HomeScreen() {
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
 
+  // Security: Verify authentication on component mount/focus
+  // This prevents cached pages from displaying after logout
+  // Check happens below in render logic with LoggedOutView
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
@@ -151,11 +155,12 @@ export default function HomeScreen() {
   const sentSurveys = surveys.filter(survey => survey.status === 'sent');
   const completedSurveys = surveys.filter(survey => survey.status === 'completed');
 
-
-
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+    return <LoggedOutView loginRoute="/login" />;
+  }
 
   console.log("Provider State in JSX: ", provider);
-
 
   return (
     <SafeAreaView style={styles.safeContainer}>

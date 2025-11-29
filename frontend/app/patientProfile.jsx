@@ -7,8 +7,9 @@ import { Image } from 'react-native';
 import profile from '../assets/images/profile.png';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
-import BackButton from '@/components/BackButton';  
+import BackButton from '@/components/BackButton';
 import { Audio } from 'expo-av';
+import LoggedOutView from '../components/LoggedOutView';
 
 
 
@@ -33,6 +34,25 @@ export default function PatientProfile() {
   // Access the token from AuthContext
   const { authState } = useAuth();
   const token = authState.token;
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+
+    try {
+      const { exp } = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return exp < currentTime;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return true;
+    }
+  };
+
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+    return <LoggedOutView loginRoute="/login" />;
+  }
 
   const playRecording = async (uri) => {
     try {

@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import NavBar from '@/components/navigation/NavBar'
+import NavBar from '@/components/navigation/NavBar';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "./context/AuthContext";
 import BackButton from '../components/BackButton';
+import LoggedOutView from '../components/LoggedOutView';
 
 // Remove TypeScript interfaces and convert to JSX
 
@@ -32,7 +33,27 @@ const Section = ({ title, children }) => {
 export default function ProfileScreen() {
   const { patient } = useLocalSearchParams();
   const parsedPatient = patient ? JSON.parse(patient) : null;
-  const { onLogout } = useAuth();
+  const { authState, onLogout } = useAuth();
+  const token = authState.token;
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+
+    try {
+      const { exp } = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return exp < currentTime;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return true;
+    }
+  };
+
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+    return <LoggedOutView loginRoute="/login" />;
+  }
 
   console.log("patient: ", patient);
 

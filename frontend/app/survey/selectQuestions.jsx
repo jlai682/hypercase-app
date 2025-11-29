@@ -13,6 +13,7 @@ import config from '../../config';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import BackButton from '../../components/BackButton';
+import LoggedOutView from '../../components/LoggedOutView';
 
 
 export default function SelectQuestions() {
@@ -20,6 +21,25 @@ export default function SelectQuestions() {
     const token = authState.token;
 
     const { patient } = useLocalSearchParams();
+
+    // Check if JWT is expired
+    const isTokenExpired = (token) => {
+        if (!token) return true;
+
+        try {
+            const { exp } = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            return exp < currentTime;
+        } catch (error) {
+            console.error("Error parsing token:", error);
+            return true;
+        }
+    };
+
+    // Show logged out view if no token or token is expired
+    if (!token || isTokenExpired(token)) {
+        return <LoggedOutView loginRoute="/login" />;
+    }
 
     const [openQuestions, setOpenQuestions] = useState([]);
     const [multipleChoiceQuestions, setMultipleChoiceQuestions] = useState([]);

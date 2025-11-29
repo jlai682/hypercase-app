@@ -10,7 +10,8 @@ import RecordingRequests from '../components/RecordingRequests';
 import PreviousRecordings from '../components/PreviousRecordings';
 import config from '../config';
 import BackButton from '../components/BackButton';
-import NavBar from '@/components/navigation/NavBar'
+import NavBar from '@/components/navigation/NavBar';
+import LoggedOutView from '../components/LoggedOutView';
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
@@ -175,14 +176,7 @@ export default function RecordScreen() {
   };
 
   if (!token || isTokenExpired(token)) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Please log in to access the recording feature</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
-          <Text style={styles.buttonText}>Go to Login</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return <LoggedOutView loginRoute="/login" />;
   }
 
   if (hasPermission === false) {

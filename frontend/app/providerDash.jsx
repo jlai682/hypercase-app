@@ -7,6 +7,7 @@ import config from "../config";
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "./context/AuthContext";
+import LoggedOutView from '../components/LoggedOutView';
 
 import { SafeAreaView } from 'react-native';
 
@@ -61,6 +62,9 @@ export default function ProviderDash() {
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
 
+  // Security: Verify authentication on component mount/focus
+  // This prevents cached pages from displaying after logout
+  // Check happens below in render logic with LoggedOutView
 
   // Handle the search functionality for searching for a patient by email
   const handleSearch = async () => {
@@ -235,8 +239,10 @@ export default function ProviderDash() {
     }
   };
 
-
-
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+    return <LoggedOutView loginRoute="/login" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeContainer}>

@@ -191,18 +191,26 @@ export const AuthProvider = ({ children }) => {
 
 
     const onLogout = async () => {
+        // Clear authentication state first
+        setAuthState({ token: null, authenticated: false });
+
         if (Platform.OS === 'web') {
-            // For web, clear tokens from localStorage
+            // For web, clear all storage and force full page reload
             localStorage.removeItem('my-jwt');
             localStorage.removeItem('refreshToken');
+            sessionStorage.clear();  // Clear any session-scoped data
+
+            // Force a full page reload to clear browser cache and JavaScript runtime
+            // This prevents back button navigation to cached authenticated pages
+            window.location.href = '/';
         } else {
             // For mobile, clear tokens from SecureStore
             await SecureStore.deleteItemAsync('my-jwt');
             await SecureStore.deleteItemAsync('refreshToken');
-        }
 
-        setAuthState({ token: null, authenticated: false });
-        router.push('/');
+            // Navigate to index using router.replace to prevent back navigation
+            router.replace('/');
+        }
     };
 
 
