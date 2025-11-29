@@ -45,7 +45,7 @@ const SurveyResponder = () => {
 
     // Show logged out view if no token or token is expired
     if (!token || isTokenExpired(token)) {
-        return <LoggedOutView loginRoute="/login" />;
+        return <LoggedOutView />;
     }
 
     useEffect(() => {

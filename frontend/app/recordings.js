@@ -176,7 +176,7 @@ export default function RecordScreen() {
   };
 
   if (!token || isTokenExpired(token)) {
-    return <LoggedOutView loginRoute="/login" />;
+    return <LoggedOutView />;
   }
 
   if (hasPermission === false) {

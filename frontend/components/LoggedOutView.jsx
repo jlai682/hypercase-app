@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
  *
  * @param {string} loginRoute - The route to navigate to when the login button is pressed (default: '/login')
  */
-export default function LoggedOutView({ loginRoute = '/login' }) {
+export default function LoggedOutView({ loginRoute = '/' }) {
   const router = useRouter();
 
   return (
