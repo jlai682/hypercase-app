@@ -166,7 +166,7 @@ def connect_provider_to_patient(request):
 
         if not patient_email:
             return Response(
-                {'error': 'Patient email is required'}, 
+                {'error': 'Patient email is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -174,33 +174,45 @@ def connect_provider_to_patient(request):
             provider = Provider.objects.get(user=request.user)
         except Provider.DoesNotExist:
             return Response(
-                {'error': 'Provider not found'}, 
+                {'error': 'Provider not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         try:
-            patient = Patient.objects.get(user__email=patient_email)  # ✅ Fixed
+            patient = Patient.objects.get(user__email=patient_email)  
         except Patient.DoesNotExist:
             return Response(
-                {'error': 'Patient not found'}, 
+                {'error': 'Patient not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        connection, created = ProviderPatientConnection.objects.get_or_create(
-            provider=provider, 
+        # Check if patient is already connected to a provider
+        existing_connection = ProviderPatientConnection.objects.filter(patient=patient).first()
+
+        if existing_connection:
+            # Check if already connected to current provider
+            if existing_connection.provider.id == provider.id:
+                return Response(
+                    {'error': 'You are already connected to this patient'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Patient is connected to a different provider
+            else:
+                return Response(
+                    {'error': 'This patient is already connected to another provider'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Create new connection only if no existing connection exists
+        connection = ProviderPatientConnection.objects.create(
+            provider=provider,
             patient=patient
         )
 
-        if created:
-            return Response(
-                {'message': 'Connection created successfully'}, 
-                status=status.HTTP_201_CREATED
-            )
-        else:
-            return Response(
-                {'message': 'Connection already exists'}, 
-                status=status.HTTP_200_OK
-            )
+        return Response(
+            {'message': 'Connection created successfully'},
+            status=status.HTTP_201_CREATED
+        )
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

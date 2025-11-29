@@ -34,7 +34,7 @@ export default function ProviderDash() {
   const [providerFirstName, setProviderFirstName] = useState('');
   const [providerLastName, setProviderLastName] = useState('');
 
-  // Access the token from AuthContext - SURAJ
+  // Access the token from AuthContext 
   const { authState } = useAuth();
   const token = authState.token;
 
@@ -92,7 +92,7 @@ export default function ProviderDash() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          "Authorization": `Bearer ${token}`  // Include JWT token - SURAJ
+          "Authorization": `Bearer ${token}`   
         },
         body: JSON.stringify({ email: email })
       });
@@ -141,19 +141,21 @@ export default function ProviderDash() {
       const data = await response.json();
       console.log('Connection Response:', data);
 
-      if (!response.ok){
-        alert(data.error || 'Failed to connect');
+      if (response.ok) {
+        // Connection successful
+        alert(data.message || 'Successfully connected to patient');
+        fetchProviderPatients();
+        setEmail('');
+        setPatient(null);
+        setError(null);
+      } else {
+        // Connection failed - display informative error message
+        setError(data.error || 'Failed to connect to patient');
       }
-
-      fetchProviderPatients();
-
-      // 👇 Reset search input and result
-      setEmail('');
-      setPatient(null);
 
     } catch (error) {
       console.error('Error connecting to patient:', error);
-      alert('An error occurred while connecting.');
+      setError('An error occurred while connecting to the patient. Please try again.');
     }
   }
 
@@ -185,7 +187,7 @@ export default function ProviderDash() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`  // Include JWT token - SURAJ
+          "Authorization": `Bearer ${token}`  
         }
       });
 
