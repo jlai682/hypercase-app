@@ -99,28 +99,38 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                 // Handle patient ID for web upload
                 try {
                     let patientId = null;
+                    console.log('Raw patient value:', patient);
+                    console.log('Type of patient:', typeof patient);
+
                     if (typeof patient === 'string') {
                         try {
                             // Try to parse if it's a JSON string
                             const parsedPatient = JSON.parse(patient);
+                            console.log('Parsed patient object:', parsedPatient);
                             patientId = parsedPatient.id;
                         } catch (e) {
                             // If not a JSON object, might be a direct ID
+                            console.log('Not JSON, treating as direct ID');
                             patientId = patient;
                         }
                     } else if (typeof patient === 'object' && patient !== null) {
                         // If it's already an object
+                        console.log('Patient is already an object:', patient);
                         patientId = patient.id;
                     } else {
                         // If patient is the ID directly
+                        console.log('Using patient as direct ID');
                         patientId = patient;
                     }
+
+                    console.log('Final patient ID before append:', patientId);
 
                     if (patientId) {
                         formData.append('patient_id', patientId);
                         console.log('Adding patient ID to web recording:', patientId);
                     } else {
                         console.log('No valid patient ID found for web upload');
+                        console.warn('WARNING: No patient ID - upload will fail!');
                     }
                 } catch (error) {
                     console.log('Error processing patient ID for web upload:', error);
@@ -182,31 +192,41 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                     try {
                         // Handle patient ID - safely parse if needed
                         let patientId = null;
+                        console.log('Native - Raw patient value:', patient);
+                        console.log('Native - Type of patient:', typeof patient);
+
                         if (typeof patient === 'string') {
                             try {
                                 // Try to parse if it's a JSON string
                                 const parsedPatient = JSON.parse(patient);
+                                console.log('Native - Parsed patient object:', parsedPatient);
                                 patientId = parsedPatient.id;
                             } catch (e) {
                                 // If not a JSON object, might be a direct ID
+                                console.log('Native - Not JSON, treating as direct ID');
                                 patientId = patient;
                             }
                         } else if (typeof patient === 'object' && patient !== null) {
                             // If it's already an object
+                            console.log('Native - Patient is already an object:', patient);
                             patientId = patient.id;
                         } else {
                             // If patient is the ID directly
+                            console.log('Native - Using patient as direct ID');
                             patientId = patient;
                         }
 
+                        console.log('Native - Final patient ID before append:', patientId);
+
                         if (patientId) {
                             formData.append('patient_id', patientId);
-                            console.log('Adding patient ID to recording:', patientId);
+                            console.log('Native - Adding patient ID to recording:', patientId);
                         } else {
-                            console.log('No valid patient ID found');
+                            console.log('Native - No valid patient ID found');
+                            console.warn('WARNING: No patient ID - upload will fail!');
                         }
                     } catch (error) {
-                        console.log('Error processing patient ID:', error);
+                        console.log('Native - Error processing patient ID:', error);
                     }
 
                     console.log('Uploading native recording with token:', token.substring(0, 10) + '...');
@@ -331,7 +351,10 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                         } else {
                             console.log('Request marked as completed!');
                             Alert.alert('Success', 'Recording uploaded and request completed.');
-                            router.push('/recordings');
+                            router.push({
+                                pathname: '/recordings',
+                                params: { patient: patient }
+                            });
                         }
                     } catch (error) {
                         console.error('Error in complete-request:', error);
@@ -341,7 +364,10 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                     // If no request object but upload succeeded
                     console.log('Recording uploaded successfully');
                     Alert.alert('Success', 'Recording uploaded successfully.');
-                    router.push('/recordings');
+                    router.push({
+                        pathname: '/recordings',
+                        params: { patient: patient }
+                    });
                 }
             }
             
@@ -381,7 +407,7 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                             }}
                             disabled={isUploading}
                         >
-                            <Text style={styles.buttonText}>Cancel</Text>
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.saveButton]}
@@ -391,7 +417,7 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
                             {isUploading ? (
                                 <ActivityIndicator color="white" size="small" />
                             ) : (
-                                <Text style={styles.buttonText}>Save</Text>
+                                <Text style={styles.saveButtonText}>Save</Text>
                             )}
                         </TouchableOpacity>
                     </View>
@@ -425,7 +451,7 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: 'blue',
         borderRadius: 8,
         padding: 12,
         marginBottom: 16,
@@ -443,12 +469,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     saveButton: {
-        backgroundColor: '#1db954',
+        backgroundColor: '#041575',
     },
     cancelButton: {
-        backgroundColor: '#ff4444',
+        color: 'black',
+        backgroundColor: '#cae7ff',
     },
-    buttonText: {
+    cancelButtonText:{
+        color: 'black',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    saveButtonText: {
         color: 'white',
         fontSize: 16,
         fontWeight: '500',

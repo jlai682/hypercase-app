@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from './context/AuthContext'; // Import the useAuth hook
-import { useNavigation } from '@react-navigation/native'; // Import navigation hook
+import { useAuth } from './context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import BackButton from '../components/BackButton';
+import { showAlert } from './utils/alerts';
 
 const Login = () => {
   const { loginType = 'patient' } = useLocalSearchParams();
@@ -16,15 +17,15 @@ const Login = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Validation Error', 'Please fill in both email and password');
+      showAlert('Validation Error', 'Please fill in both email and password');
       return;
     }
 
     try {
-      await onLogin(email, password, loginType); // Use onLogin from the context
+      const result = await onLogin(email, password, loginType); // Use onLogin from the context
+      console.log('Login result:', result);
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      console.error('Login error caught in handleLogin:', error);
     }
   };
 

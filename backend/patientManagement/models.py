@@ -3,13 +3,12 @@ from django.contrib.auth.models import User
 
 class Patient(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)  # Link to the user
-    firstName = models.CharField(max_length=255, default = "John")
-    lastName = models.CharField(max_length=255, default = "Doe")
+    firstName = models.CharField(max_length=255)
+    lastName = models.CharField(max_length=255)
     age = models.IntegerField()
     medical_history = models.TextField()
     address = models.TextField()
     phone_number = models.CharField(max_length=20)
-    email = models.EmailField()
 
     def __str__(self):
         return f"{self.firstName} {self.lastName} - {self.user.username}"
@@ -17,6 +16,6 @@ class Patient(models.Model):
     @classmethod
     def search_by_email(cls, email):
         try:
-            return cls.objects.get(email=email)
+            return cls.objects.get(user__email=email)
         except cls.DoesNotExist:
             return None

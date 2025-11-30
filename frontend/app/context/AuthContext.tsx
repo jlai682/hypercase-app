@@ -2,8 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import config from '../../config';
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 import { Platform } from 'react-native';
+import { showAlert } from '../utils/alerts';
 
 const isTokenExpired = (token: string) => {
     if (!token) return true;
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
             } else {
                 setAuthState({ token: null, authenticated: false });
                 if (storedToken) {
-                    Alert.alert("Session Expired", "Please log in again.");
+                    showAlert("Session Expired", "Please log in again.");
                 }
             }
         };
@@ -134,12 +134,12 @@ export const AuthProvider = ({ children }) => {
                     });
                 }
             } else {
-                Alert.alert('Signup Failed', data.error || 'Please try again.');
+                showAlert('Signup Failed', data.error || 'Please try again.');
             }
-            
+
         } catch (error) {
             console.error(error);
-            Alert.alert('Error', 'Something went wrong. Please try again.');
+            showAlert('Error', 'Something went wrong. Please try again.');
         }
     };
 
@@ -148,6 +148,7 @@ export const AuthProvider = ({ children }) => {
             const endpoint = loginType === 'provider'
                 ? `${config.BACKEND_URL}/api/providerManagement/login/`
                 : `${config.BACKEND_URL}/api/patientManagement/login/`;
+            console.log(endpoint)
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -180,28 +181,43 @@ export const AuthProvider = ({ children }) => {
                     router.push('/patientDash' as any);
                 }
             } else {
-                Alert.alert('Login Failed', data.error || 'Please try again');
+                // Handle different error types with specific messages
+                const errorTitle = response.status === 401 ? 'Incorrect Credentials' : 'Login Failed';
+                const errorMessage = data.error || 'Please try again';
+                console.log('Showing alert with title:', errorTitle, 'message:', errorMessage);
+                showAlert(errorTitle, errorMessage);
             }
-        } catch (error) {
-            console.error('Login error:', error);
-            Alert.alert('Error', 'Something went wrong. Please try again.');
+        } catch (error: any) {
+            // Only show generic error if it's a network/fetch error, not a login failure
+            if (error.message && !error.message.includes('Invalid email')) {
+                console.error('Login error:', error);
+                showAlert('Error', 'Something went wrong. Please try again.');
+            }
         }
     };
 
 
     const onLogout = async () => {
+        // Clear authentication state first
+        setAuthState({ token: null, authenticated: false });
+
         if (Platform.OS === 'web') {
-            // For web, clear tokens from localStorage
+            // For web, clear all storage and force full page reload
             localStorage.removeItem('my-jwt');
             localStorage.removeItem('refreshToken');
+            sessionStorage.clear();  // Clear any session-scoped data
+
+            // Force a full page reload to clear browser cache and JavaScript runtime
+            // This prevents back button navigation to cached authenticated pages
+            window.location.href = '/';
         } else {
             // For mobile, clear tokens from SecureStore
             await SecureStore.deleteItemAsync('my-jwt');
             await SecureStore.deleteItemAsync('refreshToken');
-        }
 
-        setAuthState({ token: null, authenticated: false });
-        router.push('/');
+            // Navigate to index using router.replace to prevent back navigation
+            router.replace('/');
+        }
     };
 
 

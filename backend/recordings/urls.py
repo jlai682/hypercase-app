@@ -1,22 +1,15 @@
 # recordings/urls.py
-from rest_framework.routers import DefaultRouter
-from django.urls import path, include
+from django.urls import path
 from . import views
 
-router = DefaultRouter()
-router.register(r'recordings', views.RecordingViewSet)
-
-# Add these URL patterns for your function-based views
 urlpatterns = [
-    # ViewSet routes (includes the upload action)
-    path('', include(router.urls)),
-    
-    # Additional function-based view routes
+    # Recording upload and management
+    path('upload/', views.upload_recording, name='upload_recording'),
+    path('<int:recording_id>/complete-request/', views.complete_recording_request, name='complete_recording_request'),
     path('patient/<int:patient_id>/', views.get_patient_recordings, name='patient_recordings'),
+
+    # Recording requests
     path('recording-requests/patient/<int:patient_id>/', views.get_recording_requests_by_patient, name='recording_requests_by_patient'),
     path('recording-requests/my-requests/', views.get_recording_requests_by_authenticated_patient, name='my_recording_requests'),
     path('recording-requests/create/', views.create_recording_request, name='create_recording_request'),
 ]
-
-# Make sure the router.urls are included in urlpatterns
-urlpatterns += router.urls

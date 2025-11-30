@@ -1,387 +1,312 @@
 import os
-from django.utils.timezone import now
+import re
+import logging
+import traceback
+from django.conf import settings
+from django.utils.dateparse import parse_datetime
+from django.http import StreamingHttpResponse, HttpResponse, Http404
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 from rest_framework import parsers, status
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.conf import settings
-from django.utils import timezone
+
 from .models import Recording, RecordingRequest
 from .serializers import RecordingSerializer, RecordingRequestSerializer, RecordingRequestListSerializer
 from patientManagement.models import Patient
 from providerManagement.models import Provider, ProviderPatientConnection
-from rest_framework_simplejwt.authentication import JWTAuthentication
-import io, os, subprocess
-from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.utils.text import get_valid_filename
-import uuid
-
-
-
-import logging
-import traceback
 
 logger = logging.getLogger(__name__)
 
-class RecordingViewSet(ModelViewSet):
-    queryset = Recording.objects.all()
-    serializer_class = RecordingSerializer
-    
-    # Add JWT authentication
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    
-    # Support parsing form data and file uploads
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
-    
-    def perform_create(self, serializer):
-        """Save the recording, optionally associating with the current user."""
-        serializer.save()
-    
 
-    @action(detail=False, methods=['post'], url_path='upload')
-    def upload_recording(self, request):
-        """Custom action for direct file upload (simplified - no ffmpeg conversion)."""
-        # 1) Auth guard
-        if not request.user.is_authenticated:
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser])
+def upload_recording(request):
+    """Upload a new audio recording linked to a patient and recording request."""
+    audio_file = request.FILES.get('file')
+    if not audio_file:
+        return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2) Grab the file
-        audio_file = request.FILES.get('file')
-        if not audio_file:
-            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    # Size validation
+    max_size = getattr(settings, 'FILE_UPLOAD_MAX_MEMORY_SIZE', 10485760)
+    if audio_file.size > max_size:
+        max_mb = max_size / 1024 / 1024
+        return Response(
+            {'error': f'File too large. Maximum size is {max_mb:.1f}MB'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-        # 3) Size check
-        max_size = getattr(settings, 'FILE_UPLOAD_MAX_MEMORY_SIZE', 10485760)  # Default 10MB
-        if audio_file.size > max_size:
-            max_mb = max_size / 1024 / 1024
+    # MIME type validation (client-side)
+    allowed_types = ['audio/', 'video/webm', 'video/mp4']
+    if not any(audio_file.content_type.startswith(t) for t in allowed_types):
+        return Response(
+            {'error': f'Invalid file type: {audio_file.content_type}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Additional security to check mime type
+    try:
+        import magic
+        file_content = audio_file.read(2048)  # Read first 2KB
+        audio_file.seek(0)  # Reset file pointer
+        
+        actual_mime = magic.from_buffer(file_content, mime=True)
+        if not any(actual_mime.startswith(t) for t in allowed_types):
             return Response(
-                {'error': f'File too large. Max size is {max_mb:.1f}MB'},
+                {'error': f'File content validation failed. Detected: {actual_mime}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    except ImportError:
+        logger.warning("python-magic not installed, skipping content validation")
+    except Exception as e:
+        logger.error(f"File validation error: {e}")
 
-        # 4) MIME‑type check (relaxed - accept any audio or common web formats)
-        allowed_types = ['audio/', 'video/webm', 'video/mp4']  # webm from web recordings
-        if not any(audio_file.content_type.startswith(t) for t in allowed_types):
-            return Response({'error': f'Invalid file type: {audio_file.content_type}'}, status=status.HTTP_400_BAD_REQUEST)
+    # Patient resolution 
+    patient_id = request.data.get('patient_id')
+    if not patient_id:
+        return Response(
+            {'error': 'patient_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        patient = Patient.objects.get(id=int(patient_id))
+    except (Patient.DoesNotExist, ValueError, TypeError):
+        return Response(
+            {'error': f'Patient with id {patient_id} not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
-        # 5) Resolve patient
-        patient = None
-        pid = request.data.get('patient_id')
-        if pid:
-            try:
-                patient = Patient.objects.get(id=int(pid))
-            except (Patient.DoesNotExist, ValueError):
-                return Response({'error': f'Patient id {pid} invalid'}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            # Try to find patient associated with the user
-            try:
-                patient = Patient.objects.get(user=request.user)
-            except Patient.DoesNotExist:
-                # If no patient found, that's okay - we can save without patient
-                pass
+    data = {
+        'patient_id': patient.id, 
+        'audio_file': audio_file,
+        'title': request.data.get('title', audio_file.name or 'Untitled Recording'),
+        'description': request.data.get('description', ''),
+    }
+    
+    # Pass request context so serializer can handle request_id linking
+    serializer = RecordingSerializer(data=data, context={'request': request})
+    if serializer.is_valid():
+        recording = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # 6) Create Recording directly (no ffmpeg conversion)
-        try:
-            recording = Recording.objects.create(
-                patient=patient,
-                audio_file=audio_file,
-                title=request.data.get('title', audio_file.name or 'Untitled Recording'),
-                description=request.data.get('description', ''),
-                file_size=audio_file.size,
-                file_type=audio_file.content_type,
-            )
-            
-            # Return the response in the format your frontend expects
-            return Response({
-                'id': recording.id,
-                'message': 'Recording uploaded successfully',
-                'title': recording.title,
-                'file_url': recording.audio_file.url if recording.audio_file else None
-            }, status=status.HTTP_201_CREATED)
-            
-        except Exception as exc:
-            logger.error(f'Recording creation error: {exc}')
-            return Response({'error': f'Could not save recording: {str(exc)}'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-         
-    @action(detail=False, methods=['GET'])
-    def by_patient(self, request):
-        """Get recordings for a specific patient"""
-        # Check if user is authenticated
-        if not request.user.is_authenticated:
-            logger.warning("Unauthenticated request to by_patient")
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        try:
-            patient = Patient.objects.get(user=request.user)
-            patient_id = patient.id
-            logger.info(f"Patient found: {patient_id}")
-        except Patient.DoesNotExist:
-            logger.error(f"No patient profile found for user: {request.user}")
-            return Response(
-                {"error": "Patient profile not found"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            logger.error(f"Unexpected error while retrieving patient: {e}")
-            logger.debug(traceback.format_exc())
-            return Response(
-                {"error": "Internal server error retrieving patient"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
-        try:
-            recordings = Recording.objects.filter(patient_id=patient_id)
-            logger.info(f"Found {recordings.count()} recordings for patient {patient_id}")
-            serializer = self.get_serializer(recordings, many=True)
-            return Response(serializer.data)
-        except Exception as e:
-            logger.error(f"Error while retrieving or serializing recordings: {e}")
-            logger.debug(traceback.format_exc())
-            return Response(
-                {"error": "Internal server error retrieving recordings"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-                
-    @action(detail=False, methods=['GET'], url_path='provider-patient-recordings')
-    def provider_patients(self, request):
-        """Get previous recordings of a specific patient connected to the provider"""
-        if not request.user.is_authenticated:
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_recording_request(request, recording_id):
+    """Explicitly link an existing recording to a request."""
+    # Get the recording
+    try:
+        recording = Recording.objects.get(id=recording_id)
+    except Recording.DoesNotExist:
+        return Response(
+            {"error": f"Recording {recording_id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
-        patient_id = request.query_params.get('patient_id')
-        
-        if not patient_id:
-            return Response({'error': 'patient_id query parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            patient_id = int(patient_id)
-            patient = Patient.objects.get(id=patient_id)
-        except (ValueError, TypeError):
-            return Response({'error': 'Invalid patient_id format. Must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
-        except Patient.DoesNotExist:
-            return Response({'error': f'Patient with id {patient_id} not found.'}, status=status.HTTP_404_NOT_FOUND)
+    # Verify patient owns the recording - additional security
+    try:
+        patient = Patient.objects.get(user=request.user)
+    except Patient.DoesNotExist:
+        return Response(
+            {"error": "Patient profile not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if recording.patient_id != patient.id:
+        return Response(
+            {"error": "You can only link your own recordings"},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
-        try:
-            # Determine the provider from the authenticated user
-            provider = Provider.objects.get(user=request.user)
-        except Provider.DoesNotExist:
-            return Response({'error': 'Provider profile not found for this user'}, status=status.HTTP_403_FORBIDDEN)
+    # Get request_id from request body
+    request_id = request.data.get('request_id')
+    if not request_id:
+        return Response(
+            {'error': 'request_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-        # Verify that the provider is connected to the patient
-        connection_exists = ProviderPatientConnection.objects.filter(
-            provider=provider,
-            patient=patient
-        ).exists()
+    # Get the recording request
+    try:
+        recording_request = RecordingRequest.objects.get(id=request_id)
+    except RecordingRequest.DoesNotExist:
+        return Response(
+            {"error": f"Recording request {request_id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
-        if not connection_exists:
-            return Response(
-                {'error': 'You are not authorized to access this patient’s recordings'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+    # Verify patient owns the request
+    if recording_request.patient_id != patient.id:
+        return Response(
+            {"error": "You can only complete your own recording requests"},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
-        # Get recordings for this patient
-        recordings = Recording.objects.filter(patient=patient).order_by('-created_at')  # Optionally order by latest
-        serializer = self.get_serializer(recordings, many=True)
-        return Response(serializer.data)
+    # Link recording to request
+    recording_request.recording = recording
+    recording_request.status = 'completed'
+    recording_request.response_date = timezone.now()
+    recording_request.save()
 
-            
-    @action(detail=True, methods=['POST'], url_path='complete-request')
-    def complete_request(self, request, pk=None):
-        """Mark a recording as fulfilling a request."""
-        if not request.user.is_authenticated:
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-            
-        try:
-            recording = self.get_object()
-            request_id = request.data.get('request_id')
-            
-            if not request_id:
-                return Response({'error': 'request_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            try:
-                recording_request = RecordingRequest.objects.get(id=request_id)
-                
-                # Check permissions
-                if hasattr(request.user, 'patient'):
-                    patient = Patient.objects.get(user=request.user)
-                    if recording_request.patient.id != patient.id:
-                        return Response(
-                            {"error": "You can only complete your own recording requests"}, 
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                
-                # Link recording to request and mark as completed
-                recording_request.recording = recording
-                recording_request.status = 'completed'
-                recording_request.response_date = timezone.now()
-                recording_request.save()
-                
-                return Response({'status': 'Recording request completed'})
-                
-            except RecordingRequest.DoesNotExist:
-                return Response(
-                    {"error": f"Recording request with id {request_id} does not exist"}, 
-                    status=status.HTTP_404_NOT_FOUND
-                )
-                
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    return Response({'status': 'Recording request completed'})
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_recording_requests_by_patient(request, patient_id):
+    """Only provider can get recording requests for a specific patient."""
+    # Verify the requester is a provider connected to this patient
     try:
-        # Retrieve all recording requests for the given patient
-        requests = RecordingRequest.objects.filter(patient__id=patient_id)
-
-        # Manually construct the response data
-        request_data = []
-        for req in requests:
-            request_data.append({
-                "id": req.id,
-                "title": req.title,
-                "description": req.description,
-                "issue_date": req.issue_date,
-                "response_date": req.response_date,
-                "provider": req.provider.id,
-                "patient": req.patient.id,
-                "status": req.status,
-                "recording_id": req.recording.id if req.recording else None
-            })
-        
-        return Response(request_data, status=status.HTTP_200_OK)
-
+        provider = Provider.objects.get(user=request.user)
+    except Provider.DoesNotExist:
+        return Response(
+            {"error": "Provider profile not found"}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        patient = Patient.objects.get(id=patient_id)
     except Patient.DoesNotExist:
-        return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Patient not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Verify connection
+    if not ProviderPatientConnection.objects.filter(provider=provider, patient=patient).exists():
+        return Response(
+            {"error": "You are not authorized to view this patient's requests"}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    requests = RecordingRequest.objects.filter(patient=patient).select_related('provider', 'patient', 'recording')
+    serializer = RecordingRequestListSerializer(requests, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_recording_requests_by_authenticated_patient(request):
+    """Only authenticated patient can get recording requests."""
     try:
-        # Get the patient associated with the currently authenticated user
         patient = Patient.objects.get(user=request.user)
-
-        # Retrieve all recording requests for the patient
-        requests = RecordingRequest.objects.filter(patient=patient)
-
-        request_data = []
-        for req in requests:
-            request_data.append({
-                "id": req.id,
-                "title": req.title,
-                "description": req.description,
-                "issue_date": req.issue_date,
-                "response_date": req.response_date,
-                "status": req.status,
-                "provider": req.provider.id,
-                "patient": req.patient.id,
-                "recording_id": req.recording.id if req.recording else None
-            })
-
-        return Response(request_data, status=status.HTTP_200_OK)
-
     except Patient.DoesNotExist:
-        return Response({"error": "No patient profile found for this user"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Patient profile not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    requests = RecordingRequest.objects.filter(patient=patient).select_related('provider', 'patient', 'recording')
+    serializer = RecordingRequestListSerializer(requests, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_recording_request(request):
+    """Create a new recording request from provider to patient."""
     try:
         provider = Provider.objects.get(user=request.user)
-        patient_id = request.data.get('patient_id')
+    except Provider.DoesNotExist:
+        return Response(
+            {'error': 'Provider profile not found'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    patient_id = request.data.get('patient_id')
+    if not patient_id:
+        return Response(
+            {'error': 'patient_id is required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
         patient = Patient.objects.get(id=patient_id)
-
-        title = request.data.get('title', 'Untitled Recording Request')
-        description = request.data.get('description', '')
-
-        # Create the RecordingRequest
-        recording_request = RecordingRequest.objects.create(
-            title=title,
-            description=description,
-            patient=patient,
-            provider=provider,
-            status='sent'
+    except Patient.DoesNotExist:
+        return Response(
+            {'error': 'Patient not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Verify connection
+    if not ProviderPatientConnection.objects.filter(provider=provider, patient=patient).exists():
+        return Response(
+            {'error': 'You can only send requests to your connected patients'}, 
+            status=status.HTTP_403_FORBIDDEN
         )
 
-        return Response({
-            'message': 'Recording request created successfully',
-            'id': recording_request.id
-        }, status=status.HTTP_201_CREATED)
-
-    except Patient.DoesNotExist:
-        return Response({'error': 'Patient not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Provider.DoesNotExist:
-        return Response({'error': 'Provider not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        print("Recording request creation error:", e)
-        return Response({'error': 'Something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    data = {
+        'title': request.data.get('title', 'Untitled Recording Request'),
+        'description': request.data.get('description', ''),
+        'patient_id': patient.id,
+        'provider_id': provider.id,
+        'due_date': request.data.get('due_date'),
+    }
     
+    serializer = RecordingRequestSerializer(data=data)
+    if serializer.is_valid():
+        recording_request = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_patient_recordings(request, patient_id):
-    """Get recordings for a specific patient (simplified version)"""
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-
+    """Get recordings for a specific patient with proper authorization."""
+    # Verify patient exists
     try:
-        patient_id = int(patient_id)
         patient = Patient.objects.get(id=patient_id)
-    except (ValueError, TypeError):
-        return Response({'error': 'Invalid patient_id format'}, status=status.HTTP_400_BAD_REQUEST)
     except Patient.DoesNotExist:
-        return Response({'error': f'Patient with id {patient_id} not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    try:
-        # Get recordings for this patient
-        recordings = Recording.objects.filter(patient=patient).order_by('-created_at')
-        
-        # Manually serialize the data to match your frontend expectations
-        recordings_data = []
-        for recording in recordings:
-            recording_data = {
-                'id': recording.id,
-                'title': recording.title,
-                'description': recording.description,
-                'file_url': recording.audio_file.url if recording.audio_file else None,
-                'recording_file': recording.audio_file.url if recording.audio_file else None,
-                'created_at': recording.created_at,
-                'upload_date': recording.created_at,
-                'name': recording.title,  # Frontend expects 'name' field
-            }
-            recordings_data.append(recording_data)
-        
-        return Response(recordings_data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Error retrieving recordings for patient {patient_id}: {e}")
         return Response(
-            {'error': 'Internal server error'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {'error': f'Patient with id {patient_id} not found'},
+            status=status.HTTP_404_NOT_FOUND
         )
     
-import re
-from django.http import StreamingHttpResponse, HttpResponse, Http404
-from django.conf import settings
-from django.views.decorators.http import require_http_methods
+    # Authorization check
+    is_authorized = False
+    
+    # Check if requester is the patient
+    try:
+        requester_patient = Patient.objects.get(user=request.user)
+        if requester_patient.id == patient_id:
+            is_authorized = True
+    except Patient.DoesNotExist:
+        pass
+    
+    # Check if requester is a connected provider
+    if not is_authorized:
+        try:
+            provider = Provider.objects.get(user=request.user)
+            if ProviderPatientConnection.objects.filter(provider=provider, patient=patient).exists():
+                is_authorized = True
+        except Provider.DoesNotExist:
+            pass
+    
+    if not is_authorized:
+        return Response(
+            {'error': 'You are not authorized to view these recordings'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Use serializer for consistent response - FIX: No more duplicate fields
+    recordings = Recording.objects.filter(patient=patient).order_by('-created_at')
+    serializer = RecordingSerializer(recordings, many=True, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# ADD THIS ENTIRE FUNCTION to recordings/views.py
 @require_http_methods(["GET", "HEAD", "OPTIONS"])
 def serve_recording(request, file_path):
     """
-    Custom view to serve audio recordings with proper range request support.
-    This ensures iOS AVPlayer can stream the audio files.
+    Serve audio recordings with range request support for iOS AVPlayer.
     """
-    # Handle OPTIONS for CORS
+    # Handle OPTIONS for CORS preflight
     if request.method == 'OPTIONS':
         response = HttpResponse()
         response['Access-Control-Allow-Origin'] = '*'
@@ -391,30 +316,32 @@ def serve_recording(request, file_path):
         response['Access-Control-Max-Age'] = '86400'
         return response
     
-    # Construct full file path
+    # Validate file path (prevent directory traversal)
+    if not re.match(r'^[a-zA-Z0-9_/.-]+$', file_path):
+        raise Http404("Invalid file path")
+    
     full_path = os.path.join(settings.MEDIA_ROOT, 'recordings', file_path)
     
     # Security check: ensure path doesn't escape media root
     if not os.path.abspath(full_path).startswith(os.path.abspath(settings.MEDIA_ROOT)):
         raise Http404("Invalid file path")
     
-    # Check if file exists
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise Http404("Recording not found")
     
-    # Get file size
     file_size = os.path.getsize(full_path)
     
     # Determine content type
-    content_type = 'application/octet-stream'
-    if full_path.endswith('.m4a'):
-        content_type = 'audio/x-m4a'
-    elif full_path.endswith('.mp3'):
-        content_type = 'audio/mpeg'
-    elif full_path.endswith('.wav'):
-        content_type = 'audio/wav'
-    elif full_path.endswith('.mp4'):
-        content_type = 'audio/mp4'
+    content_types = {
+        '.m4a': 'audio/x-m4a',
+        '.mp3': 'audio/mpeg',
+        '.wav': 'audio/wav',
+        '.mp4': 'audio/mp4',
+        '.webm': 'audio/webm',
+        '.ogg': 'audio/ogg',
+    }
+    ext = os.path.splitext(full_path)[1].lower()
+    content_type = content_types.get(ext, 'application/octet-stream')
     
     # Handle HEAD request
     if request.method == 'HEAD':
@@ -430,27 +357,20 @@ def serve_recording(request, file_path):
     range_header = request.META.get('HTTP_RANGE', '').strip()
     
     if range_header and range_header.startswith('bytes='):
-        # Handle range request
         range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
         if not range_match:
-            response = HttpResponse(status=400)
-            response['Content-Type'] = content_type
-            return response
+            return HttpResponse(status=400)
         
         start = int(range_match.group(1))
         end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
         
-        # Validate range
         if start >= file_size or end >= file_size or start > end:
-            response = HttpResponse(status=416)  # Range Not Satisfiable
+            response = HttpResponse(status=416)
             response['Content-Range'] = f'bytes */{file_size}'
-            response['Content-Type'] = content_type
             return response
         
-        # Calculate content length
         content_length = end - start + 1
         
-        # Create streaming iterator
         def file_iterator(chunk_size=8192):
             with open(full_path, 'rb') as f:
                 f.seek(start)
@@ -462,36 +382,22 @@ def serve_recording(request, file_path):
                     remaining -= len(chunk)
                     yield chunk
         
-        # Create 206 Partial Content response
-        response = StreamingHttpResponse(
-            file_iterator(),
-            status=206,
-            content_type=content_type
-        )
-        
+        response = StreamingHttpResponse(file_iterator(), status=206, content_type=content_type)
         response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
         response['Content-Length'] = str(content_length)
-        response['Accept-Ranges'] = 'bytes'
-        response['Access-Control-Allow-Origin'] = '*'
-        response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
+    else:
+        # Full file response
+        def file_iterator(chunk_size=8192):
+            with open(full_path, 'rb') as f:
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    yield chunk
         
-        return response
+        response = StreamingHttpResponse(file_iterator(), content_type=content_type)
+        response['Content-Length'] = str(file_size)
     
-    # No range request - return full file
-    def file_iterator(chunk_size=8192):
-        with open(full_path, 'rb') as f:
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                yield chunk
-    
-    response = StreamingHttpResponse(
-        file_iterator(),
-        content_type=content_type
-    )
-    
-    response['Content-Length'] = str(file_size)
     response['Accept-Ranges'] = 'bytes'
     response['Access-Control-Allow-Origin'] = '*'
     response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'

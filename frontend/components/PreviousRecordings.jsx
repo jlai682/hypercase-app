@@ -82,52 +82,28 @@ const PreviousRecordings = ({ patient }) => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Try multiple endpoints to see which one works
-        const endpoints = [
-          `/api/recordings/patient/${patientId}/`,
-          `/api/recordings/provider-patient-recordings/?patient_id=${patientId}`,
-          `/api/recordings/by_patient/?patient_id=${patientId}`
-        ];
-        
-        let successfulData = null;
-        let successfulEndpoint = null;
-        
-        for (const endpoint of endpoints) {
-          try {
-            console.log(`🔄 Trying endpoint: ${config.BACKEND_URL}${endpoint}`);
-            
-            const response = await fetch(`${config.BACKEND_URL}${endpoint}`, {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-            });
 
-            console.log(`📡 Response status for ${endpoint}:`, response.status);
-            
-            if (response.ok) {
-              const data = await response.json();
-              console.log(`✅ Success with ${endpoint}:`, data);
-              successfulData = data;
-              successfulEndpoint = endpoint;
-              break;
-            } else {
-              const errorText = await response.text();
-              console.log(`❌ Error ${response.status} for ${endpoint}:`, errorText);
-            }
-          } catch (endpointError) {
-            console.log(`❌ Network error for ${endpoint}:`, endpointError.message);
-          }
-        }
-        
-        if (successfulData) {
-          console.log(`🎉 Using data from ${successfulEndpoint}:`, successfulData);
-          setRecordings(successfulData);
+        const endpoint = `/api/recordings/patient/${patientId}/`;
+        console.log(`🔄 Fetching from endpoint: ${config.BACKEND_URL}${endpoint}`);
+
+        const response = await fetch(`${config.BACKEND_URL}${endpoint}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log(`📡 Response status:`, response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Success:`, data);
+          setRecordings(data);
         } else {
-          console.log("❌ All endpoints failed");
-          setError("Failed to fetch recordings from all endpoints");
+          const errorText = await response.text();
+          console.log(`❌ Error ${response.status}:`, errorText);
+          setError(`Failed to fetch recordings: ${response.status}`);
           setRecordings([]);
         }
 
@@ -160,6 +136,16 @@ const PreviousRecordings = ({ patient }) => {
       // Create full URL if it's a relative path
       const fullUrl = uri.startsWith('http') ? uri : `${config.BACKEND_URL}${uri}`;
       console.log("🌐 Full URL to play:", fullUrl);
+
+      // Check if file is WebM (unsupported on iOS)
+      if (Platform.OS === 'ios' && fullUrl.toLowerCase().includes('.webm')) {
+        console.error("❌ WebM format not supported on iOS");
+        Alert.alert(
+          'Unsupported Format',
+          'This recording is in WebM format which is not supported on iOS. Please use recordings made on iOS devices.'
+        );
+        return;
+      }
 
       if (Platform.OS === 'web') {
         // Web implementation
@@ -203,6 +189,13 @@ const PreviousRecordings = ({ patient }) => {
         setCurrentlyPlaying({ id: recordingId, sound: soundWrapper });
       } else {
         // Native (mobile) implementation using Expo AV
+        // Set audio mode for iOS playback
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: fullUrl },
           { shouldPlay: true }

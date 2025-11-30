@@ -4,13 +4,12 @@ from patientManagement.models import Patient
 
 class Provider(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    firstName = models.CharField(max_length = 255, default = "John")
-    lastName = models.CharField(max_length = 255, default = "Doe")
+    firstName = models.CharField(max_length = 255)
+    lastName = models.CharField(max_length = 255)
     phone_number = models.CharField(max_length = 20)
-    email = models.EmailField()
 
     def __str__(self):
-        return f"{self.name} = {self.user.username}"
+        return f"{self.firstName} {self.lastName} - {self.user.username}"
 
 
 class ProviderPatientConnection(models.Model):

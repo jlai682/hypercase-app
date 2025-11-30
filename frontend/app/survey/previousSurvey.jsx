@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from '../context/AuthContext';
 import config from '../../config';
 import BackButton from '../../components/BackButton';
+import LoggedOutView from '../../components/LoggedOutView';
 
 const PreviousSurvey = () => {
     const [surveyData, setSurveyData] = useState(null);
@@ -15,6 +16,25 @@ const PreviousSurvey = () => {
 
     const { survey } = useLocalSearchParams();
     const parsedSurvey = JSON.parse(survey || '[]');
+
+    // Check if JWT is expired
+    const isTokenExpired = (token) => {
+        if (!token) return true;
+
+        try {
+            const { exp } = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            return exp < currentTime;
+        } catch (error) {
+            console.error("Error parsing token:", error);
+            return true;
+        }
+    };
+
+    // Show logged out view if no token or token is expired
+    if (!token || isTokenExpired(token)) {
+        return <LoggedOutView />;
+    }
 
     useEffect(() => {
         const fetchSurveyData = async () => {

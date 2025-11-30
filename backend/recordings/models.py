@@ -1,37 +1,38 @@
 import os
 import uuid
+import logging
 from django.db import models
+from django.db.models.signals import post_delete  
+from django.dispatch import receiver   
+from django.utils import timezone
+
 from patientManagement.models import Patient
 from providerManagement.models import Provider
-from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 def get_recording_path(instance, filename):
     """Generate a path for each recording file using the title as filename."""
-    # Extract file extension
 
+    if '.' in filename:
+        ext = filename.rsplit('.', 1)[-1].lower()
+    else:
+        ext = 'webm'  # Default extension
     
-    ext = filename.split('.')[-1]
-
-    print(f"Patient ID: {instance.patient.id if instance.patient else None}")
-
-    
-    # Use the title as filename if available, otherwise use original filename
+    # Generate filename
     if instance.title:
-        # Replace spaces with underscores and remove special characters for safety
         safe_title = "".join(c if c.isalnum() or c in [' ', '_', '-'] else '' for c in instance.title)
         safe_title = safe_title.replace(' ', '_')
-        new_filename = f"{safe_title}.{ext}"
+        # Add UUID suffix to prevent collisions
+        new_filename = f"{safe_title}_{uuid.uuid4().hex[:8]}.{ext}"
     else:
-        # If no title is provided, fall back to a UUID
         new_filename = f"{uuid.uuid4()}.{ext}"
     
     # Create patient-specific directory if patient is provided
     if instance.patient and instance.patient.id:
-        # This creates a structure like: recordings/patient_123/your_recording_title.mp3
         patient_dir = f"patient_{instance.patient.id}"
         return os.path.join('recordings', patient_dir, new_filename)
     
-    # Return the full path relative to MEDIA_ROOT if no patient
     return os.path.join('recordings', new_filename)
 
 class Recording(models.Model):
@@ -40,41 +41,26 @@ class Recording(models.Model):
         Patient, 
         on_delete=models.CASCADE, 
         related_name='recordings',
-        null=True,
-        blank=True
+        null=False,
+        blank=False
     )
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
-
-
-    
-    # The actual audio file
-    audio_file = models.FileField(upload_to=get_recording_path)
-    
-    # File metadata
-    file_size = models.IntegerField(default=0)  # Size in bytes
-    duration = models.FloatField(null=True, blank=True)  # Duration in seconds
-    file_type = models.CharField(max_length=50, blank=True)  # MIME type
-    
-    # Timestamps
+    audio_file = models.FileField(upload_to=get_recording_path)    
+    file_size = models.BigIntegerField(default=0)   
+    duration = models.FloatField(null=True, blank=True)   
+    file_type = models.CharField(max_length=50, blank=True)   
     created_at = models.DateTimeField(auto_now_add=True)
     
-    class Meta:
+    class Meta: 
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['patient', '-created_at']),  
+        ]
     
     def __str__(self):
         patient_name = f"{self.patient.firstName} {self.patient.lastName}" if self.patient else "No Patient"
         return f"{patient_name} - {self.title or f'Recording {self.id}'}"
-    
-    def delete(self, *args, **kwargs):
-        """Override delete method to delete file from filesystem as well."""
-        # Delete the file from storage
-        if self.audio_file:
-            if os.path.isfile(self.audio_file.path):
-                os.remove(self.audio_file.path)
-        
-        # Call the parent delete method
-        super().delete(*args, **kwargs)
         
     @classmethod
     def get_by_patient(cls, patient_id):
@@ -92,19 +78,43 @@ class Recording(models.Model):
             self.request.status = 'completed'
             self.request.response_date = timezone.now()
             self.request.save()
-    
+
+# This signal runs AFTER any Recording is deleted, including bulk deletes
+@receiver(post_delete, sender=Recording)
+def delete_recording_file(sender, instance, **kwargs):
+    """Delete the audio file when Recording instance is deleted."""
+    if instance.audio_file:
+        try:
+            file_path = instance.audio_file.path
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            # Log the error but don't prevent deletion
+            logger.error(f"Failed to delete recording file {instance.audio_file.name}: {e}")
+            
 class RecordingRequest(models.Model):
     STATUS_CHOICES = [
         ('sent', 'Sent'),
         ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),   
+        ('expired', 'Expired'),   
     ]
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     issue_date = models.DateTimeField(auto_now_add=True)
     response_date = models.DateTimeField(null=True, blank=True)
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='recording_requests_received')
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='recording_requests_sent')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='sent')
+    due_date = models.DateTimeField(null=True, blank=True)  
+
+    patient = models.ForeignKey(
+        Patient, 
+        on_delete=models.CASCADE, 
+        related_name='recording_requests_received'
+    )
+    provider = models.ForeignKey(
+        Provider, 
+        on_delete=models.CASCADE, 
+        related_name='recording_requests_sent'
+    )
     recording = models.OneToOneField(
         'Recording',
         on_delete=models.SET_NULL,
@@ -113,5 +123,21 @@ class RecordingRequest(models.Model):
         related_name='request'
     )
     
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='sent')
+    
+    class Meta: 
+        ordering = ['-issue_date']
+        indexes = [
+            models.Index(fields=['patient', 'status']),
+            models.Index(fields=['provider', 'status']),
+        ]
+
     def __str__(self):
         return f"{self.title} sent to {self.patient} by {self.provider}"
+    
+    @property # Added
+    def is_overdue(self):
+        """Check if the request is past its due date."""
+        if self.due_date and self.status == 'sent':
+            return timezone.now() > self.due_date
+        return False

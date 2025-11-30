@@ -27,6 +27,11 @@ const RecordingRequests = ({ sentRequests, completedRequests, patient }) => {
           <View key={request.id} style={styles.card}>
             <Text style={styles.title}>{request.title}</Text>
             <Text style={styles.description}>{request.description}</Text>
+            {request.due_date && (
+              <Text style={styles.dueDate}>
+                Due: {new Date(request.due_date).toLocaleDateString()} at {new Date(request.due_date).toLocaleTimeString()}
+              </Text>
+            )}
             <TouchableOpacity
               onPress={() => router.push({
                 pathname: '/record',
@@ -82,6 +87,12 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginTop: 12,
     lineHeight: 22,
+  },
+  dueDate: {
+    fontSize: 14,
+    color: '#DC2626',
+    marginTop: 8,
+    fontWeight: '600',
   },
   button: {
     marginTop: 20,

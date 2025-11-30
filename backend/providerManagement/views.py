@@ -1,278 +1,308 @@
-# Import necessary Django utilities
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
 from .models import Provider, ProviderPatientConnection
 from .forms import ProviderForm, UserForm
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
 from django.contrib.auth.models import User
-
-# Import JWT and DRF authentication tools
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
-# Import the Patient model from the patientManagement app
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework import status
 from patientManagement.models import Patient
 
-# Handles provider registration
-@csrf_exempt
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def providerRegister(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode('utf-8'))  # Parse incoming JSON data
-            print("Received data:", data)
+    try:
+        data = request.data
+        
+        required_fields = ['email', 'password', 'firstName', 'lastName']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return Response(
+                    {'error': f'{field} is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-            # Ensure required fields are present
-            required_fields = ['email', 'password', 'firstName', 'lastName']
-            for field in required_fields:
-                if field not in data or not data[field]:
-                    return JsonResponse({'error': f'{field} is required'}, status=400)
+        if '@' not in data['email']:
+            return Response(
+                {'error': 'Please enter a valid email address'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            data['username'] = data['email']  # Set username to email for authentication
+        data['username'] = data['email']
 
-            # Initialize forms with incoming data
-            user_form = UserForm(data)
-            provider_form = ProviderForm(data)
+        user_form = UserForm(data)
+        provider_form = ProviderForm(data)
 
-            if user_form.is_valid() and provider_form.is_valid():
-                # Save user to the auth system
-                user = user_form.save(commit=False)
-                user.set_password(user_form.cleaned_data['password'])  # Hash password
-                user.save()
+        if user_form.is_valid() and provider_form.is_valid():
+            user = user_form.save(commit=False)
+            user.set_password(user_form.cleaned_data['password'])
+            user.save()
 
-                # Save provider-specific info
-                provider = provider_form.save(commit=False)
-                provider.user = user
-                provider.save()
+            provider = provider_form.save(commit=False)
+            provider.user = user
+            provider.save()
 
-                # Generate JWT token pair
-                refresh = RefreshToken.for_user(user)
-                access_token = refresh.access_token
+            refresh = RefreshToken.for_user(user)
 
-                return JsonResponse({
-                    'message': 'Registration successful',
-                    'access': str(access_token),
-                    'refresh': str(refresh)
-                }, status=201)
+            return Response({
+                'message': 'Registration successful',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'provider_id': provider.id,
+                'firstName': provider.firstName,
+                'lastName': provider.lastName,
+                'email': user.email
+            }, status=status.HTTP_201_CREATED)
 
-            # If forms are invalid, return errors
-            error_details = {
+        return Response({
+            'error': 'Invalid form data',
+            'details': {
                 'user_form_errors': user_form.errors,
-                'patient_form_errors': provider_form.errors
+                'provider_form_errors': provider_form.errors
             }
-            return JsonResponse({'error': 'Invalid form data', 'details': error_details}, status=400)
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-# Handles provider login
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def provider_login(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            email = data.get('email')
-            password = data.get('password')
+    try:
+        data = request.data
+        email = data.get('email')
+        password = data.get('password')
 
-            if not email or not password:
-                return JsonResponse({'error': 'Email and password are required'}, status=400)
+        if not email or not password:
+            return Response(
+                {'error': 'Email and password are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            user = authenticate(request, username=email, password=password)
+        if '@' not in email:
+            return Response(
+                {'error': 'Please enter a valid email address'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            if user is not None:
-                login(request, user)  # Django login to initialize session (optional)
+        user = authenticate(username=email, password=password)
 
-                # Generate JWT token pair
+        if user is not None:
+            try:
+                provider = Provider.objects.get(user=user)
                 refresh = RefreshToken.for_user(user)
-                access_token = refresh.access_token
 
-                return JsonResponse({
-                    'access': str(access_token),
+                return Response({
+                    'message': 'Login successful',
+                    'access': str(refresh.access_token),
                     'refresh': str(refresh),
-                    'message': 'Login successful'
-                }, status=200)
-            else:
-                return JsonResponse({'error': 'Invalid credentials'}, status=401)
+                    'provider_id': provider.id,
+                    'firstName': provider.firstName,
+                    'lastName': provider.lastName,
+                    'email': user.email
+                }, status=status.HTTP_200_OK)
+            
+            except Provider.DoesNotExist:
+                return Response(
+                    {'error': 'Provider profile not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            return Response(
+                {'error': 'Invalid email or password. Please check your credentials and try again.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-# Authenticated endpoint to search for a patient by email
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def search_patient_by_email(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            email = data.get('email')
+    try:
+        data = request.data
+        email = data.get('email')
 
-            if not email:
-                return JsonResponse({'error': 'Email is required'}, status=400)
+        if not email:
+            return Response(
+                {'error': 'Email is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            patient = Patient.search_by_email(email)  # Custom method to find patient
+        patient = Patient.search_by_email(email)
 
-            if patient:
-                # Only return specific patient fields
-                patient_data = {
-                    'id': patient.id,
-                    'firstName': patient.firstName,
-                    'lastName': patient.lastName,
-                    'age': patient.age,
-                    'medical_history': patient.medical_history,
-                    'address': patient.address,
-                    'phone_number': patient.phone_number,
-                    'email': patient.email
-                }
-                return JsonResponse({'patient': patient_data}, status=200)
-            else:
-                return JsonResponse({'error': 'Patient not found'}, status=404)
+        if patient:
+            patient_data = {
+                'id': patient.id,
+                'firstName': patient.firstName,
+                'lastName': patient.lastName,
+                'age': patient.age,
+                'medical_history': patient.medical_history,
+                'address': patient.address,
+                'phone_number': patient.phone_number,
+                'email': patient.user.email  
+            }
+            return Response({'patient': patient_data}, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Patient not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-# Connects an authenticated provider to a patient by email
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def connect_provider_to_patient(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            provider_user = request.user  # Authenticated provider
-            patient_email = data.get('patient_email')
+    try:
+        data = request.data
+        patient_email = data.get('patient_email')
 
-            if not patient_email:
-                return JsonResponse({'error': 'Patient email is required'}, status=400)
-
-            provider = Provider.objects.get(user=provider_user)
-            patient = Patient.objects.get(email=patient_email)
-
-            # Avoid duplicate connections using get_or_create
-            connection, created = ProviderPatientConnection.objects.get_or_create(
-                provider=provider, patient=patient
+        if not patient_email:
+            return Response(
+                {'error': 'Patient email is required'},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-            if created:
-                return JsonResponse({'message': 'Connection created successfully'}, status=201)
-            else:
-                return JsonResponse({'message': 'Connection already exists'}, status=200)
-
+        try:
+            provider = Provider.objects.get(user=request.user)
         except Provider.DoesNotExist:
-            return JsonResponse({'error': 'Provider not found'}, status=404)
+            return Response(
+                {'error': 'Provider not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            patient = Patient.objects.get(user__email=patient_email)  
         except Patient.DoesNotExist:
-            return JsonResponse({'error': 'Patient not found'}, status=404)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return Response(
+                {'error': 'Patient not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+        # Check if patient is already connected to a provider
+        existing_connection = ProviderPatientConnection.objects.filter(patient=patient).first()
 
-# Returns all patients connected to the authenticated provider
+        if existing_connection:
+            # Check if already connected to current provider
+            if existing_connection.provider.id == provider.id:
+                return Response(
+                    {'error': 'You are already connected to this patient'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Patient is connected to a different provider
+            else:
+                return Response(
+                    {'error': 'This patient is already connected to another provider'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Create new connection only if no existing connection exists
+        connection = ProviderPatientConnection.objects.create(
+            provider=provider,
+            patient=patient
+        )
+
+        return Response(
+            {'message': 'Connection created successfully'},
+            status=status.HTTP_201_CREATED
+        )
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_provider_patient_connections(request):
-    if request.method == "GET":
-        try:
-            if not request.user.is_authenticated:
-                return JsonResponse({"error": "User is not authenticated"}, status=401)
+    try:
+        provider = Provider.objects.get(user=request.user)
+        connections = ProviderPatientConnection.objects.filter(provider=provider)
 
-            provider_user = request.user
-            provider = Provider.objects.get(user=provider_user)
+        connection_data = [
+            {
+                "patient": {
+                    "id": connection.patient.id,
+                    "email": connection.patient.user.email,  
+                    "firstName": connection.patient.firstName,
+                    "lastName": connection.patient.lastName,
+                },
+                "connected_on": connection.connected_on.isoformat()
+            }
+            for connection in connections
+        ]
+        
+        return Response({"patients": connection_data}, status=status.HTTP_200_OK)
 
-            connections = ProviderPatientConnection.objects.filter(provider=provider)
+    except Provider.DoesNotExist:
+        return Response(
+            {"error": "Provider not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Serialize the connection data
-            connection_data = [
-                {
-                    "patient": {
-                        "email": connection.patient.email,
-                        "firstName": connection.patient.firstName,
-                        "lastName": connection.patient.lastName,
-                    }
-                }
-                for connection in connections
-            ]
-            return JsonResponse({"patients": connection_data}, status=200)
 
-        except Provider.DoesNotExist:
-            return JsonResponse({"error": "Provider not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-
-    return JsonResponse({"error": "Invalid request method"}, status=405)
-
-# Returns info about the currently authenticated provider
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_provider_info(request):
-    if request.method == "GET":
-        try:
-            if not request.user.is_authenticated:
-                return JsonResponse({"error": "User is not authenticated"}, status=401)
+    try:
+        provider = Provider.objects.get(user=request.user)
 
-            provider_user = request.user
-            provider = Provider.objects.get(user=provider_user)
+        provider_info = {
+            "id": provider.id,
+            "firstName": provider.firstName,
+            "lastName": provider.lastName,
+            "email": provider.user.email,
+            "phone_number": provider.phone_number,
+        }
 
-            # Construct provider info dictionary
-            provider_info = {
-                "firstName": provider.firstName,
-                "lastName": provider.lastName,
-                "email": provider.user.email,
-            }
+        return Response({"provider": provider_info}, status=status.HTTP_200_OK)
 
-            return JsonResponse({"provider": provider_info}, status=200)
-
-        except Provider.DoesNotExist:
-            return JsonResponse({"error": "Provider not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-
-    return JsonResponse({"error": "Invalid request method"}, status=405)
+    except Provider.DoesNotExist:
+        return Response(
+            {"error": "Provider not found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['POST'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_provider_by_patient(request):
-    if request.method == "POST":
+    try:
         try:
-            if not request.user.is_authenticated:
-                return JsonResponse({"error": "User is not authenticated"}, status=401)
-            
-            patient_user = request.user
+            patient = Patient.objects.get(user=request.user)
+        except Patient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-            try:
-                patient = Patient.objects.get(user=patient_user)
-            except Patient.DoesNotExist:
-                return JsonResponse({'error': 'Patient not found'}, status=404)
+        connection = ProviderPatientConnection.objects.filter(patient=patient).first()
 
-            # Attempt to get provider connection
-            connection = ProviderPatientConnection.objects.filter(patient=patient).first()
+        if not connection:
+            return Response(
+                {'message': 'No provider connected', 'provider': None}, 
+                status=status.HTTP_200_OK
+            )
 
-            if not connection:
-                return JsonResponse({'message': 'No provider connected to this patient'}, status=200)
+        provider = connection.provider
+        provider_data = {
+            "id": provider.id,
+            "firstName": provider.firstName,
+            "lastName": provider.lastName,
+            "email": provider.user.email,
+        }
 
-            provider = connection.provider
-            provider_data = {
-                "firstName": provider.firstName,
-                "lastName": provider.lastName,
-                "email": provider.user.email,
-            }
+        return Response({"provider": provider_data}, status=status.HTTP_200_OK)
 
-            return JsonResponse({"provider": provider_data}, status=200)
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

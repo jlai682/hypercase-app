@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '../../components/BackButton';
+import LoggedOutView from '../../components/LoggedOutView';
 
 
 
@@ -27,6 +28,25 @@ const SurveyResponder = () => {
 
     const { survey } = useLocalSearchParams();
     const parsedSurvey = JSON.parse(survey || '[]');
+
+    // Check if JWT is expired
+    const isTokenExpired = (token) => {
+        if (!token) return true;
+
+        try {
+            const { exp } = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            return exp < currentTime;
+        } catch (error) {
+            console.error("Error parsing token:", error);
+            return true;
+        }
+    };
+
+    // Show logged out view if no token or token is expired
+    if (!token || isTokenExpired(token)) {
+        return <LoggedOutView />;
+    }
 
     useEffect(() => {
         // Fetch survey responses from the API

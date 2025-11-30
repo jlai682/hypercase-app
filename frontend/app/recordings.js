@@ -10,37 +10,76 @@ import RecordingRequests from '../components/RecordingRequests';
 import PreviousRecordings from '../components/PreviousRecordings';
 import config from '../config';
 import BackButton from '../components/BackButton';
-import NavBar from '@/components/navigation/NavBar'
+import NavBar from '@/components/navigation/NavBar';
+import LoggedOutView from '../components/LoggedOutView';
 
 export default function RecordScreen() {
   const [hasPermission, setHasPermission] = useState(null);
   const router = useRouter();
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const { patient } = useLocalSearchParams(); 
+  const { patient: patientParam } = useLocalSearchParams();
   const { authState } = useAuth();
   const token = authState.token;
 
   const [recordingRequests, setRecordingRequests] = useState(null);
   const [sentRecordings, setSentRecordings] = useState([]);
   const [completedRecordings, setCompletedRecordings] = useState([]);
+  const [patientProfile, setPatientProfile] = useState(null);
 
-  console.log("Patient ID from params:", patient);
+  console.log("Patient ID from params:", patientParam);
 
   // Parse patient ID if it's passed as a JSON string
   const getPatientId = () => {
-    if (!patient) return null;
-    
-    try {
-      // If patient is a JSON string, parse it and get the ID
-      const parsedPatient = JSON.parse(patient);
-      return parsedPatient.id;
-    } catch (e) {
-      // If it's already a number/string, use it directly
-      return patient;
+    // First try to get from params
+    if (patientParam) {
+      try {
+        // If patient is a JSON string, parse it and get the ID
+        const parsedPatient = JSON.parse(patientParam);
+        return parsedPatient.id;
+      } catch (e) {
+        // If it's already a number/string, use it directly
+        return patientParam;
+      }
     }
+
+    // If not in params, try to get from fetched profile
+    if (patientProfile && patientProfile.id) {
+      return patientProfile.id;
+    }
+
+    return null;
   };
 
   const patientId = getPatientId();
+
+  // Fetch patient profile if not provided in params
+  useEffect(() => {
+    const fetchPatientProfile = async () => {
+      if (patientParam || !token) return; // Skip if patient already provided or no token
+
+      try {
+        const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Fetched patient profile:", data);
+          setPatientProfile(data);
+        } else {
+          console.error('Failed to fetch patient profile');
+        }
+      } catch (error) {
+        console.error('Error fetching patient profile:', error);
+      }
+    };
+
+    fetchPatientProfile();
+  }, [token, patientParam]);
 
   useEffect(() => {
     const fetchRecordingInfo = async () => {
@@ -137,14 +176,7 @@ export default function RecordScreen() {
   };
 
   if (!token || isTokenExpired(token)) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Please log in to access the recording feature</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/login')}>
-          <Text style={styles.buttonText}>Go to Login</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return <LoggedOutView />;
   }
 
   if (hasPermission === false) {
@@ -166,19 +198,22 @@ export default function RecordScreen() {
     }
   };
 
+  // Determine which patient data to pass to components
+  const patientForComponents = patientParam || (patientProfile ? patientProfile.id.toString() : null);
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
-        <BackButton />
+        <BackButton route="patientDash"/>
       </View>
       <RecordingRequests
         sentRequests={JSON.stringify(sentRecordings)}
         completedRequests={JSON.stringify(completedRecordings)}
         onSelectRequest={handleSelectRequest}
-        patient={patient}
+        patient={patientForComponents}
       />
       {/* Pass the patient ID directly to PreviousRecordings */}
-      <PreviousRecordings patient={patient} />
+      <PreviousRecordings patient={patientForComponents} />
       <NavBar />
     </SafeAreaView>
   );
