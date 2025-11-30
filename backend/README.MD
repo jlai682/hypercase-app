@@ -98,4 +98,4 @@ SECURITY WARNING: Generate a new SECRET_KEY for production!
 
 1. Make a file named ".env" in this /backend directory.
 2. Type in the following command into the terminal: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'  
-3. copy and paste this key into the .env file and set it to the SECRET_KEY variable. The file should look like: SECRET_KEY: *copy_and_pasted_key*  
+3. copy and paste this key into the .env file and set it to the SECRET_KEY variable. The file should look like: SECRET_KEY=*copy_and_pasted_key*  
