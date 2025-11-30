@@ -121,7 +121,7 @@ def patient_login(request):
                 )
         else:
             return Response(
-                {'error': 'Invalid credentials THIS IS WRONNGGG'}, 
+                {'error': 'Invalid email or password. Please check your credentials and try again.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
     

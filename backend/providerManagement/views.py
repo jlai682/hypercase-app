@@ -112,7 +112,7 @@ def provider_login(request):
                 )
         else:
             return Response(
-                {'error': 'Invalid credentials'}, 
+                {'error': 'Invalid email or password. Please check your credentials and try again.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
@@ -144,7 +144,7 @@ def search_patient_by_email(request):
                 'medical_history': patient.medical_history,
                 'address': patient.address,
                 'phone_number': patient.phone_number,
-                'email': patient.user.email  # ✅ Fixed
+                'email': patient.user.email  
             }
             return Response({'patient': patient_data}, status=status.HTTP_200_OK)
         else:
@@ -229,7 +229,7 @@ def get_provider_patient_connections(request):
             {
                 "patient": {
                     "id": connection.patient.id,
-                    "email": connection.patient.user.email,  # ✅ Fixed
+                    "email": connection.patient.user.email,  
                     "firstName": connection.patient.firstName,
                     "lastName": connection.patient.lastName,
                 },
