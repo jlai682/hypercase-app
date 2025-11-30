@@ -1,5 +1,8 @@
 # Files to ignore
 
+# Secrets
+backend/.env
+
 # Dependencies
 node_modules/
 venv/
