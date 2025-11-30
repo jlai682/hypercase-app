@@ -35,6 +35,7 @@ media/
 .expo-shared/
 *.orig.*
 web-build/
+expo-env.d.ts
 
 # IDE
 .vscode/
