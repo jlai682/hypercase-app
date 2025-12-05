@@ -26,7 +26,13 @@ def providerRegister(request):
 
         if '@' not in data['email']:
             return Response(
-                {'error': 'Please enter a valid email address'}, 
+                {'error': 'Please enter a valid email address'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(email=data['email']).exists():
+            return Response(
+                {'error': 'An account with this email already exists'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
