@@ -473,6 +473,7 @@ export default function PatientProfile() {
             <FlatList
               data={pendingSurveys}
               keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
               renderItem={({ item }) => (
                 <Pressable
                   style={styles.surveyItem}
@@ -495,6 +496,7 @@ export default function PatientProfile() {
             <FlatList
               data={completedSurveys}
               keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
               renderItem={({ item }) => (
                 <Pressable
                   style={styles.surveyItem}
@@ -519,6 +521,7 @@ export default function PatientProfile() {
             <FlatList
               data={pendingRecordings}
               keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
               renderItem={({ item }) => (
                 <Pressable
                   style={styles.surveyItem}
@@ -547,6 +550,7 @@ export default function PatientProfile() {
             contentContainerStyle={styles.container}
             data={previousRecordings}
             keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
+            scrollEnabled={false}
             ListEmptyComponent={<Text style={styles.emptyText}>No Recordings yet</Text>}
             renderItem={renderItem}
           />

@@ -133,21 +133,19 @@ export default function AudioRecorder() {
                 }
             } else {
                 if (recording) {
-                    try {
-                        recording.stopAndUnloadAsync();
-                    } catch (error) {
+                    // Handle promise rejection since we can't use async/await in cleanup
+                    recording.stopAndUnloadAsync().catch(error => {
                         console.log('Error cleaning up recording:', error);
-                    }
+                    });
                 }
             }
     
             // Cleanup sound playback - use unloadAsync for both platforms
             if (currentlyPlaying?.sound) {
-                try {
-                    currentlyPlaying.sound.unloadAsync();
-                } catch (error) {
+                // Handle promise rejection since we can't use async/await in cleanup
+                currentlyPlaying.sound.unloadAsync().catch(error => {
                     console.log('Error unloading sound:', error);
-                }
+                });
             }
         };
     }, [isRecording, currentlyPlaying, audioStream, mediaRecorder, recording]);

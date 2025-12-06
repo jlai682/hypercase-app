@@ -79,6 +79,15 @@ export default function HomeScreen() {
           },
         });
 
+        console.log("THIS IS THE RESPONSE BAST", response)
+
+        // If 403, this user is not a patient (likely a provider), silently skip
+        if (response.status === 403) {
+          setLoading(false);
+          return;
+        }
+
+
         if (!response.ok) throw new Error('Failed to fetch patient data');
 
         const patientData = await response.json();

@@ -69,14 +69,13 @@ export default function ProviderDash() {
   // Handle the search functionality for searching for a patient by email
   const handleSearch = async () => {
     if (!isValidJWT(token)) {
-      console.log("bad token")
+      console.log("BAD token")
     }
     else {
-      console.log("token is valid")
+      console.log("Token is valid")
     }
     if (isTokenExpired(token)) {
       console.error("Token is expired");
-      console.log("LSDKFJLDSKFJLSD")
       return;
     }
     else {

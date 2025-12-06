@@ -66,6 +66,11 @@ export default function RecordScreen() {
           },
         });
 
+        // If 403, this user is not a patient (likely a provider), silently skip
+        if (response.status === 403) {
+          return;
+        }
+
         if (response.ok) {
           const data = await response.json();
           console.log("Fetched patient profile:", data);
@@ -91,6 +96,12 @@ export default function RecordScreen() {
             'Authorization': `Bearer ${token}`,
           },
         });
+
+        // If 403, this user is not a patient (likely a provider), silently skip
+        if (recordingResponse.status === 403) {
+          return;
+        }
+
         if (!recordingResponse.ok) throw new Error('Failed to fetch recording requests');
         const recordingData = await recordingResponse.json();
         setRecordingRequests(recordingData);

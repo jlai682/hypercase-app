@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 import { useAuth } from "../app/context/AuthContext";
 import RecordButton from '../components/recordButton';
 import config from '../config';
@@ -167,10 +166,6 @@ const NameRecordingModal = ({ showNameModal, setShowNameModal, setRecordingDurat
             else {
                 // Native implementation
                 try {
-                    // Get file info - wrapped in try/catch to handle potential errors
-                    const fileInfo = await FileSystem.getInfoAsync(uri);
-                    console.log('File info:', fileInfo);
-
                     // Create form data for multipart/form-data request
                     const formData = new FormData();
 

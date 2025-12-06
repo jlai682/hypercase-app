@@ -80,7 +80,7 @@ def upload_recording(request):
         )
 
     data = {
-        'patient_id': patient.id, 
+        'patient_id': patient.id,
         'audio_file': audio_file,
         'title': request.data.get('title', audio_file.name or 'Untitled Recording'),
         'description': request.data.get('description', ''),

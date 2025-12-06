@@ -76,10 +76,18 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [authState, setAuthState] = useState({ token: null, authenticated: null });
+    const [isMounted, setIsMounted] = useState(false);
     const router = useRouter();
 
-    // Load token from secure storage when the app starts
+    // Mark as mounted after first render to ensure router is ready
     useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    // Load token from secure storage only after component is mounted
+    useEffect(() => {
+        if (!isMounted) return;
+
         const initializeAuthState = async () => {
             const storedToken = await loadToken('access');  // Load the access token using loadToken helper
             if (storedToken && !isTokenExpired(storedToken)) {
@@ -93,7 +101,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         initializeAuthState();
-    }, []);
+    }, [isMounted]);
 
     const onRegister = async (email: string, password: string, firstName: string, lastName: string, signupType: string, age?: string) => {
         try {
@@ -198,9 +206,6 @@ export const AuthProvider = ({ children }) => {
 
 
     const onLogout = async () => {
-        // Clear authentication state first
-        setAuthState({ token: null, authenticated: false });
-
         if (Platform.OS === 'web') {
             // For web, clear all storage and force full page reload
             localStorage.removeItem('my-jwt');
@@ -211,12 +216,19 @@ export const AuthProvider = ({ children }) => {
             // This prevents back button navigation to cached authenticated pages
             window.location.href = '/';
         } else {
-            // For mobile, clear tokens from SecureStore
+            // For mobile, clear tokens from SecureStore first
             await SecureStore.deleteItemAsync('my-jwt');
             await SecureStore.deleteItemAsync('refreshToken');
 
-            // Navigate to index using router.replace to prevent back navigation
-            router.replace('/');
+            // Clear authentication state first, then navigate after state update completes
+            // This prevents race conditions with simultaneous state updates and navigation
+            if (isMounted) {
+                setAuthState({ token: null, authenticated: false });
+                // Defer navigation to next tick to allow React to complete the state update
+                setTimeout(() => {
+                    router.replace('/');
+                }, 0);
+            }
         }
     };
 
