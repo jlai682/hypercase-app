@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from './context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -33,7 +33,11 @@ const Login = () => {
 
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
 
       <View style={{ alignSelf: 'flex-start', marginTop: 60, marginLeft: 30 }}>
         <BackButton />
@@ -73,7 +77,7 @@ const Login = () => {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
