@@ -29,6 +29,9 @@ export default function PatientProfile() {
   const [requestTitle, setRequestTitle] = useState('');
   const [dueDate, setDueDate] = useState(new Date());
 
+  // For the delete confirmation modal
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
   const router = useRouter();
 
   // Access the token from AuthContext
@@ -285,6 +288,36 @@ export default function PatientProfile() {
         patient: JSON.stringify(patient)
       }
     });
+  };
+
+  const confirmDeleteConnection = async () => {
+    try {
+      const response = await fetch(`${config.BACKEND_URL}/api/providerManagement/delete_patient_provider_connection/`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          patient_id: patient.id,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setDeleteModalVisible(false);
+        Alert.alert("Success", "Patient connection removed successfully!");
+        router.push({
+          pathname: '/providerDash',
+        });
+      } else {
+        setDeleteModalVisible(false);
+        Alert.alert("Error", data.error || "Failed to remove patient connection");
+      }
+    } catch (error) {
+      setDeleteModalVisible(false);
+      Alert.alert("Error", "An error occurred while removing the patient connection");
+    }
   };
 
   const submitRecordingRequest = async () => {
@@ -566,6 +599,11 @@ export default function PatientProfile() {
           <Text style={styles.surveyButtonText}>Send a New Recording Request</Text>
         </Pressable>
 
+        {/* Button to delete this patient provider connection */}
+        <Pressable style={[styles.surveyButton, styles.deleteConnectionButton]} onPress={() => setDeleteModalVisible(true)}>
+          <Text style={styles.surveyButtonText}>Remove this patient</Text>
+        </Pressable>
+
         {/* Modal for entering recording request title */}
         <Modal
           animationType="slide"
@@ -636,6 +674,39 @@ export default function PatientProfile() {
                   onPress={submitRecordingRequest}
                 >
                   <Text style={styles.textStyle}>Submit</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal for delete confirmation */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={deleteModalVisible}
+          onRequestClose={() => {
+            setDeleteModalVisible(false);
+          }}
+        >
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>Remove Patient Connection</Text>
+              <Text style={styles.deleteWarningText}>
+                Are you sure you want to remove this patient connection? This action cannot be undone.
+              </Text>
+              <View style={styles.modalButtons}>
+                <Pressable
+                  style={[styles.button, styles.buttonCancel]}
+                  onPress={() => setDeleteModalVisible(false)}
+                >
+                  <Text style={styles.textStyle}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.button, styles.buttonDelete]}
+                  onPress={confirmDeleteConnection}
+                >
+                  <Text style={styles.textStyle}>Yes, Remove</Text>
                 </Pressable>
               </View>
             </View>
@@ -731,6 +802,10 @@ const styles = StyleSheet.create({
   },
   recordingButton: {
     backgroundColor: '#1565C0',
+    marginTop: 15,
+  },
+  deleteConnectionButton: {
+    backgroundColor: '#3385e3ff',
     marginTop: 15,
   },
   surveyButtonText: {
@@ -838,5 +913,15 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 20,
+  },
+  deleteWarningText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  buttonDelete: {
+    backgroundColor: '#DC2626',
   },
 });

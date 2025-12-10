@@ -79,6 +79,13 @@ export default function AudioRecorder() {
     const { authState } = useAuth();
     const token = authState?.token;
 
+    // Check if token has a valid JWT format
+    const isValidJWT = (token) => {
+        if (typeof token !== 'string') return false;
+        const parts = token.split('.');
+        return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
+    };
+
     // Check if JWT is expired
     const isTokenExpired = (token) => {
         if (!token || !isValidJWT(token)) {
@@ -95,16 +102,17 @@ export default function AudioRecorder() {
         }
     };
 
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    console.log(payload);
-
-
-    // Check if token has a valid JWT format
-    const isValidJWT = (token) => {
-        if (typeof token !== 'string') return false;
-        const parts = token.split('.');
-        return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-    };
+    // Debug token payload only when token exists
+    useEffect(() => {
+        if (token && isValidJWT(token)) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                console.log('Token payload:', payload);
+            } catch (error) {
+                console.error('Error parsing token for debug:', error);
+            }
+        }
+    }, [token]);
 
     useEffect(() => {
         let interval;

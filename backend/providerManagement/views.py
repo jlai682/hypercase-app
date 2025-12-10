@@ -161,6 +161,32 @@ def search_patient_by_email(request):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_patient_provider_connection(request):
+    try:
+        patient_id = request.data.get('patient_id')
+        provider = Provider.objects.get(user=request.user)
+
+        connection = ProviderPatientConnection.objects.get(
+            provider=provider,
+            patient_id=patient_id
+        )
+        connection.delete()
+
+        return Response(
+            {'message': 'Connection deleted successfully'},
+            status=status.HTTP_200_OK
+        )
+
+    except ProviderPatientConnection.DoesNotExist:
+        return Response(
+            {'error': 'Connection not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
