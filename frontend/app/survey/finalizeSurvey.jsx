@@ -8,7 +8,7 @@ import {
     Button,
 } from 'react-native'; import { useLocalSearchParams, useRouter } from 'expo-router';
 import { TextInput } from 'react-native';
-import { format } from 'date-fns'; // you'll need to install date-fns if not already
+import { format } from 'date-fns'; 
 import config from '../../config';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../../components/BackButton';

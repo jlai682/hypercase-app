@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from '../context/AuthContext';
 import config from '../../config';
@@ -129,6 +129,26 @@ const SurveyResponder = () => {
         console.log("open responses: ", openResponses);
         console.log("multiple choice responses: ", multipleChoiceResponses);
 
+        // Validate multiple choice responses
+        const totalMultipleChoice = surveyData.multiple_choice_responses.length;
+        const answeredMultipleChoice = Object.keys(selectedOptions).length;
+
+        // Validate open responses
+        const totalOpenResponses = surveyData.open_responses.length;
+        const answeredOpenResponses = Object.values(openResponses).filter(
+          response => response.response && response.response.trim() !== ''
+        ).length;
+
+        // Check if all questions are answered
+        if (answeredMultipleChoice < totalMultipleChoice || answeredOpenResponses < totalOpenResponses) {
+          Alert.alert(
+            'Incomplete Survey',
+            'Please answer all questions before submitting.',
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+
         try {
             // Construct the data to be sent to the backend
             const data = {
@@ -143,7 +163,7 @@ const SurveyResponder = () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify(data), // Send the constructed data
+                body: JSON.stringify(data),
             });
 
             // Handle response
@@ -153,11 +173,9 @@ const SurveyResponder = () => {
 
             const result = await response.json();
             console.log("Survey submitted successfully:", result);
-            // You can navigate or show a success message here if needed
 
         } catch (error) {
             console.error("Error submitting survey:", error);
-            // Handle error (e.g., show a message to the user)
         }
 
         router.push('/patientDash')
@@ -208,79 +226,89 @@ const SurveyResponder = () => {
     }
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView 
+              style={styles.mainContainer}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+                        <BackButton />
+                    </View>
 
-            <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
-                <BackButton />
-            </View>
+                    <ScrollView contentContainerStyle={styles.scrollContainer}>
+                        <View style={styles.container}>
+                            <Text style={styles.surveyTitle}>{surveyData.survey_title}</Text>
 
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-                <View style={styles.container}>
-                    <Text style={styles.surveyTitle}>{surveyData.survey_title}</Text>
+                            <View style={styles.section}>
+                                {surveyData.multiple_choice_responses.length > 0 ? (
+                                    <FlatList
+                                        scrollEnabled={false}
+                                        data={surveyData.multiple_choice_responses}
+                                        renderItem={({ item, index }) => (
+                                            <View style={styles.itemContainer}>
+                                                <Text style={styles.question}>{item.question.question_description}</Text>
+                                                <View style={styles.options}>
+                                                    {item.options.map((option) => (
+                                                        <RadioButton
+                                                            key={option.id}
+                                                            label={option.option}
+                                                            selected={selectedOptions[index]?.id === option.id}
+                                                            onSelect={() => onSelect(index, option)}
+                                                        />
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
+                                        keyExtractor={(item, index) => index.toString()}
+                                    />
+                                ) : (
+                                    <Text>No multiple choice responses</Text>
+                                )}
+                            </View>
 
-                    <View style={styles.section}>
-                        {surveyData.multiple_choice_responses.length > 0 ? (
-                            <FlatList
-                                scrollEnabled={false}
-                                data={surveyData.multiple_choice_responses}
-                                renderItem={({ item, index }) => (
-                                    <View style={styles.itemContainer}>
-                                        <Text style={styles.question}>{item.question.question_description}</Text>
-                                        <View style={styles.options}>
-                                            {item.options.map((option) => (
-                                                <RadioButton
-                                                    key={option.id}
-                                                    label={option.option}
-                                                    selected={selectedOptions[index]?.id === option.id}
-                                                    onSelect={() => onSelect(index, option)}
+                            <View style={styles.section}>
+                                {surveyData.open_responses.length > 0 ? (
+                                    <FlatList
+                                        scrollEnabled={false}
+                                        data={surveyData.open_responses}
+                                        renderItem={({ item, index }) => (
+                                            <View style={styles.itemContainer}>
+                                                <Text style={styles.question}>{item.question.question_description}</Text>
+                                                <TextInput
+                                                    style={styles.textInput}
+                                                    multiline
+                                                    placeholder="Type your response here..."
+                                                    value={openResponses[index]?.response || ''}
+                                                    onChangeText={(text) => handleOpenResponseChange(index, text)}
                                                 />
-                                            ))}
-                                        </View>
-                                    </View>
+                                            </View>
+                                        )}
+                                        keyExtractor={(item, index) => index.toString()}
+                                    />
+                                ) : (
+                                    <Text>No open question responses</Text>
                                 )}
-                                keyExtractor={(item, index) => index.toString()}
-                            />
-                        ) : (
-                            <Text>No multiple choice responses</Text>
-                        )}
-                    </View>
+                            </View>
 
-                    <View style={styles.section}>
-                        {surveyData.open_responses.length > 0 ? (
-                            <FlatList
-                                scrollEnabled={false}
-                                data={surveyData.open_responses}
-                                renderItem={({ item, index }) => (
-                                    <View style={styles.itemContainer}>
-                                        <Text style={styles.question}>{item.question.question_description}</Text>
-                                        <TextInput
-                                            style={styles.textInput}
-                                            multiline
-                                            placeholder="Type your response here..."
-                                            value={openResponses[index]?.response || ''}
-                                            onChangeText={(text) => handleOpenResponseChange(index, text)}
-                                        />
-                                    </View>
-                                )}
-                                keyExtractor={(item, index) => index.toString()}
-                            />
-                        ) : (
-                            <Text>No open question responses</Text>
-                        )}
-                    </View>
-
-                    <Pressable style={styles.submitButton} onPress={submitSurvey}>
-                        <Text style={styles.submitButtonText}>Submit</Text>
-                    </Pressable>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
-
-
+                            <Pressable style={styles.submitButton} onPress={submitSurvey}>
+                                <Text style={styles.submitButtonText}>Submit</Text>
+                            </Pressable>
+                        </View>
+                    </ScrollView>
+                </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
+    mainContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#cae7ff',
+        width: '100%',
+    },
     safeArea: {
         flex: 1,
         backgroundColor: '#cae7ff',

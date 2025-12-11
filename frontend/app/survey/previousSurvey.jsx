@@ -65,12 +65,9 @@ const PreviousSurvey = () => {
         return (
             <View style={styles.loadingContainer}>
 
-
                 <View style={{ alignSelf: 'flex-start', marginTop: 50, marginLeft: 20 }}>
                     <BackButton />
                 </View>
-
-
 
                 <ActivityIndicator size="large" color="#0000ff" />
             </View>
@@ -85,7 +82,6 @@ const PreviousSurvey = () => {
                     <BackButton />
                 </View>
 
-
                 <Text style={styles.errorText}>Error: {error}</Text>
             </View>
         );
@@ -98,7 +94,6 @@ const PreviousSurvey = () => {
                 <View style={{ alignSelf: 'flex-start', marginTop: 50, marginLeft: 20 }}>
                     <BackButton />
                 </View>
-
 
                 <Text>No survey data available</Text>
             </View>
