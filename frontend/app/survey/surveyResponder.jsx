@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../components/context/AuthContext';
 import config from '../../config';
 import { ThemedText } from '@/components/ThemedText';
 import { TextInput } from 'react-native';
@@ -13,21 +13,9 @@ import LoggedOutView from '../../components/LoggedOutView';
 
 
 const SurveyResponder = () => {
-    const [surveyData, setSurveyData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [selectedOptions, setSelectedOptions] = useState({});
-    const [openResponses, setOpenResponses] = useState({});
-    const [multipleChoiceResponses, setMultipleChoiceResponses] = useState({});
-
-
-    const router = useRouter();
 
     const { authState } = useAuth();
     const token = authState.token;
-
-    const { survey } = useLocalSearchParams();
-    const parsedSurvey = JSON.parse(survey || '[]');
 
     // Check if JWT is expired
     const isTokenExpired = (token) => {
@@ -47,6 +35,17 @@ const SurveyResponder = () => {
     if (!token || isTokenExpired(token)) {
         return <LoggedOutView />;
     }
+
+    const [surveyData, setSurveyData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [selectedOptions, setSelectedOptions] = useState({});
+    const [openResponses, setOpenResponses] = useState({});
+    const [multipleChoiceResponses, setMultipleChoiceResponses] = useState({});
+    const { survey } = useLocalSearchParams();
+    const parsedSurvey = JSON.parse(survey || '[]');
+
+    const router = useRouter();
 
     useEffect(() => {
         // Fetch survey responses from the API
@@ -456,10 +455,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#00205B',  // Deep blue background
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 6,
+        boxShadow: '0px 4px 6px 0px rgba(0, 0, 0, 0.1)',
         elevation: 5,  // Adds depth on Android
     },
     submitButtonText: {

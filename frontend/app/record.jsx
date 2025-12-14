@@ -8,10 +8,11 @@ import {
     Platform,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import { useAuth } from "../app/context/AuthContext";
+import { useAuth } from "../components/context/AuthContext";
 import RecordButton from '../components/recordButton';
 import NameRecordingModal from '../components/NameRecordingModal';
 import { useLocalSearchParams } from 'expo-router';
+import LoggedOutView from '../components/LoggedOutView';
 
 
 // Backend API URL - Update this with your Django server address
@@ -56,24 +57,6 @@ const storage = {
 
 
 export default function AudioRecorder() {
-    const [recording, setRecording] = useState(null);
-    const [sound, setSound] = useState(null);
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingDuration, setRecordingDuration] = useState(0);
-    const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
-    const [tempRecordingUri, setTempRecordingUri] = useState(null);
-    const [showNameModal, setShowNameModal] = useState(false);
-    const [newRecordingName, setNewRecordingName] = useState('');
-    // Web-specific state
-    const [mediaRecorder, setMediaRecorder] = useState(null);
-    const [audioChunks, setAudioChunks] = useState([]);
-    const [audioStream, setAudioStream] = useState(null);
-
-
-    const { patient, request } = useLocalSearchParams();
-
-    console.log("request: ", request);
-
 
     // Access the token from AuthContext
     const { authState } = useAuth();
@@ -101,6 +84,29 @@ export default function AudioRecorder() {
             return true;
         }
     };
+
+    // Show logged out view if no token or token is expired
+    if (!token || isTokenExpired(token)) {
+        return <LoggedOutView />;
+    }
+
+    const [recording, setRecording] = useState(null);
+    const [sound, setSound] = useState(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+    const [tempRecordingUri, setTempRecordingUri] = useState(null);
+    const [showNameModal, setShowNameModal] = useState(false);
+    const [newRecordingName, setNewRecordingName] = useState('');
+    // Web-specific state
+    const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [audioChunks, setAudioChunks] = useState([]);
+    const [audioStream, setAudioStream] = useState(null);
+
+
+    const { patient, request } = useLocalSearchParams();
+
+    console.log("request: ", request);
 
     // Debug token payload only when token exists
     useEffect(() => {

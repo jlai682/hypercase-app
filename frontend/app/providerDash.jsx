@@ -6,7 +6,7 @@ import { ThemedView } from '@/components/ThemedView';
 import config from "../config";
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "../components/context/AuthContext";
 import LoggedOutView from '../components/LoggedOutView';
 
 import { SafeAreaView } from 'react-native';
@@ -16,6 +16,35 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 
 
 export default function ProviderDash() {
+
+  // Access the token from AuthContext 
+  const { authState } = useAuth();
+  const token = authState.token;
+
+  // Check if token has a valid JWT format
+  const isValidJWT = (token) => {
+    if (typeof token !== 'string') return false;
+    const parts = token.split('.');
+    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
+  };
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token || !isValidJWT(token)) {
+      return true
+    };  // Return true if token is invalid
+
+    const { exp } = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+
+    return exp < currentTime;
+  }
+
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+    return <LoggedOutView />;
+  }
+  
   const router = useRouter();
 
   //State for email search input
@@ -34,37 +63,10 @@ export default function ProviderDash() {
   const [providerFirstName, setProviderFirstName] = useState('');
   const [providerLastName, setProviderLastName] = useState('');
 
-  // Access the token from AuthContext 
-  const { authState } = useAuth();
-  const token = authState.token;
-
   const { onLogout } = useAuth();
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-    if (!token || !isValidJWT(token)) {
-      return true
-    };  // Return true if token is invalid
-    if (!token) return true;
-
-    const { exp } = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-
-    return exp < currentTime;
-  }
-
-
-
-  // Check if token has a valid JWT format
-  const isValidJWT = (token) => {
-    if (typeof token !== 'string') return false;
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-  };
 
   // Security: Verify authentication on component mount/focus
   // This prevents cached pages from displaying after logout
-  // Check happens below in render logic with LoggedOutView
 
   // Handle the search functionality for searching for a patient by email
   const handleSearch = async () => {
@@ -240,11 +242,6 @@ export default function ProviderDash() {
     }
   };
 
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-    return <LoggedOutView />;
-  }
-
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content} >
@@ -360,9 +357,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+    boxShadow: '0px 0px 5px 0px rgba(0, 0, 0, 0.05)',
     elevation: 2,
     fontFamily: 'Figtree_400Regular',
   },
@@ -370,9 +365,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+    boxShadow: '0px 0px 5px 0px rgba(0, 0, 0, 0.05)',
     elevation: 2,
     marginBottom: 20,
   },

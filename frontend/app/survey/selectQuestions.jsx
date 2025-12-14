@@ -8,7 +8,7 @@ import {
     Button,
     TextInput,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../components/context/AuthContext';
 import config from '../../config';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
@@ -204,10 +204,7 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 12,
         marginBottom: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        boxShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.1)',
         elevation: 2,
     },
     selectedCard: {
@@ -239,10 +236,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderRadius: 16,
         backgroundColor: '#FFFFFF',
-        shadowColor: '#87CFE9',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
+        boxShadow: '0px 4px 6px 0px rgba(135, 207, 233, 0.15)',
         elevation: 3,
         borderWidth: 1,
         borderColor: '#BFDBFE',

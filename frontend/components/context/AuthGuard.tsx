@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from './AuthContext'; // Adjust the path if needed
-import { useRouter } from 'expo-router'; // Adjust for your routing library
+import { useAuth } from './AuthContext';  
+import { useRouter } from 'expo-router';  
 
 const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const { authState } = useAuth();

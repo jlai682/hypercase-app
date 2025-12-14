@@ -10,19 +10,39 @@ import {
 import { TextInput } from 'react-native';
 import { format } from 'date-fns'; 
 import config from '../../config';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../components/context/AuthContext';
 import BackButton from '../../components/BackButton';
+import LoggedOutView from '../../components/LoggedOutView';
 
 
 export default function FinalizeSurvey() {
-    const { selectedMC, selectedOpen, patient } = useLocalSearchParams();
-    const parsedPatient = patient ? JSON.parse(patient) : null;
-    const parsedOpenQuestions = JSON.parse(selectedOpen || '[]');
-    const parsedMCQuestions = JSON.parse(selectedMC || '[]');
 
     const { authState } = useAuth();
     const token = authState.token;
 
+    // Check if JWT is expired
+    const isTokenExpired = (token) => {
+        if (!token) return true;
+
+        try {
+            const { exp } = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            return exp < currentTime;
+        } catch (error) {
+            console.error("Error parsing token:", error);
+            return true;
+        }
+    };
+
+    // Show logged out view if no token or token is expired
+    if (!token || isTokenExpired(token)) {
+        return <LoggedOutView />;
+    }
+    
+    const { selectedMC, selectedOpen, patient } = useLocalSearchParams();
+    const parsedPatient = patient ? JSON.parse(patient) : null;
+    const parsedOpenQuestions = JSON.parse(selectedOpen || '[]');
+    const parsedMCQuestions = JSON.parse(selectedMC || '[]');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [surveyTitle, setSurveyTitle] = useState(() => {
@@ -135,10 +155,7 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 12,
         marginBottom: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        boxShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.1)',
         elevation: 2,
     },
     questionText: {

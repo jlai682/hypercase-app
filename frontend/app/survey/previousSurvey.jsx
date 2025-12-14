@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, SafeAreaView } from 'react-native';
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../components/context/AuthContext';
 import config from '../../config';
 import BackButton from '../../components/BackButton';
 import LoggedOutView from '../../components/LoggedOutView';
 
 const PreviousSurvey = () => {
-    const [surveyData, setSurveyData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     const { authState } = useAuth();
     const token = authState.token;
-
-    const { survey } = useLocalSearchParams();
-    const parsedSurvey = JSON.parse(survey || '[]');
 
     // Check if JWT is expired
     const isTokenExpired = (token) => {
@@ -35,6 +29,12 @@ const PreviousSurvey = () => {
     if (!token || isTokenExpired(token)) {
         return <LoggedOutView />;
     }
+
+    const [surveyData, setSurveyData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const { survey } = useLocalSearchParams();
+    const parsedSurvey = JSON.parse(survey || '[]');
 
     useEffect(() => {
         const fetchSurveyData = async () => {
@@ -194,10 +194,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderRadius: 12,
         padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
+        boxShadow: '0px 2px 6px 0px rgba(0, 0, 0, 0.1)',
         elevation: 3,
         marginHorizontal: 10,  // Ensure item container doesn't touch edges
     },

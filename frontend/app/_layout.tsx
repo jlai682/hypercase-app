@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { AuthProvider } from './context/AuthContext';  // Adjust the import path if needed
+import { AuthProvider } from '../components/context/AuthContext';
 
 export default function Layout() {
   return (
@@ -84,7 +84,7 @@ export default function Layout() {
           }}
         />
         <Stack.Screen
-          name="selectQuestions"
+          name="survey/selectQuestions"
           options={{
             title: 'Select Survey Questions',
             headerShown: false,
@@ -92,7 +92,7 @@ export default function Layout() {
           }}
         />
         <Stack.Screen
-          name="finalizeSurvey"
+          name="survey/finalizeSurvey"
           options={{
             title: 'Finalize Survey',
             headerShown: false,
@@ -100,14 +100,14 @@ export default function Layout() {
           }}
         />
         <Stack.Screen
-          name="surveyResponder"
+          name="survey/surveyResponder"
           options={{
             title: 'Survey Responder',
             headerShown: false,
           }}
         />
         <Stack.Screen
-          name="previousSurvey"
+          name="survey/previousSurvey"
           options={{
             title: 'Survey Responder',
             headerShown: false,

@@ -219,16 +219,11 @@ export const AuthProvider = ({ children }) => {
             // For mobile, clear tokens from SecureStore first
             await SecureStore.deleteItemAsync('my-jwt');
             await SecureStore.deleteItemAsync('refreshToken');
+            setAuthState({ token: null, authenticated: false });
 
-            // Clear authentication state first, then navigate after state update completes
-            // This prevents race conditions with simultaneous state updates and navigation
-            if (isMounted) {
-                setAuthState({ token: null, authenticated: false });
-                // Defer navigation to next tick to allow React to complete the state update
-                setTimeout(() => {
-                    router.replace('/');
-                }, 0);
-            }
+            // Reset navigation stack completely
+            router.dismissAll();  // Dismisses all screens in the stack
+            router.replace('/');
         }
     };
 

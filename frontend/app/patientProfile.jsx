@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import config from '../config';
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "../components/context/AuthContext";
 import { SafeAreaView } from 'react-native';
 import { StyleSheet, Platform, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput, Button } from 'react-native';
 import { Image } from 'react-native';
@@ -14,27 +14,7 @@ import LoggedOutView from '../components/LoggedOutView';
 
 
 export default function PatientProfile() {
-  const { patientEmail } = useLocalSearchParams();
-  const [patient, setPatient] = useState(null);
-  const [surveys, setSurveys] = useState([]);
-  const [recordingRequests, setRecordingRequests] = useState([]); // State for recording requests
-  const [error, setError] = useState(null);
-  const [previousRecordings, setPreviousRecordings] = useState([]);
-  const currentlyPlayingRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
-
-  // For the request modal
-  const [modalVisible, setModalVisible] = useState(false);
-  const [requestTitle, setRequestTitle] = useState('');
-  const [dueDate, setDueDate] = useState(new Date());
-
-  // For the delete confirmation modal
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-
-  const router = useRouter();
-
-  // Access the token from AuthContext
   const { authState } = useAuth();
   const token = authState.token;
 
@@ -56,6 +36,26 @@ export default function PatientProfile() {
   if (!token || isTokenExpired(token)) {
     return <LoggedOutView />;
   }
+
+  const { patientEmail } = useLocalSearchParams();
+  const [patient, setPatient] = useState(null);
+  const [surveys, setSurveys] = useState([]);
+  const [recordingRequests, setRecordingRequests] = useState([]); // State for recording requests
+  const [error, setError] = useState(null);
+  const [previousRecordings, setPreviousRecordings] = useState([]);
+  const currentlyPlayingRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+
+  // For the request modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [requestTitle, setRequestTitle] = useState('');
+  const [dueDate, setDueDate] = useState(new Date());
+
+  // For the delete confirmation modal
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  const router = useRouter();
 
   const playRecording = async (uri) => {
     try {
@@ -730,10 +730,7 @@ const styles = StyleSheet.create({
     paddingLeft: 15,
     paddingRight: 15,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.05)',
     elevation: 3,
     flexDirection: 'row',
     alignItems: 'center',
@@ -831,13 +828,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 25,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.25)',
     elevation: 5,
   },
   modalTitle: {

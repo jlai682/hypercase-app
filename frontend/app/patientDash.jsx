@@ -8,7 +8,7 @@ import { Text } from 'react-native';
 import NavBar from '../components/navigation/NavBar';
 import LoggedOutView from '../components/LoggedOutView';
 
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "../components/context/AuthContext";
 
 const FeatureCard = ({ iconName, title, description, onPress }) => (
   <Pressable onPress={onPress} style={({ pressed }) => [
@@ -27,30 +27,9 @@ const FeatureCard = ({ iconName, title, description, onPress }) => (
 );
 
 export default function HomeScreen() {
-  const router = useRouter();
-
+  
   const { authState } = useAuth();
   const token = authState.token;
-  const { onLogout } = useAuth();
-
-  const [patient, setPatient] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [surveys, setSurveys] = useState([]);
-  const [provider, setProvider] = useState(null);
-
-
-
-  const isTokenExpired = (token) => {
-    if (!token || !isValidJWT(token)) {
-      return true
-    };  // Return true if token is invalid
-    if (!token) return true;
-
-    const { exp } = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-
-    return exp < currentTime;
-  }
 
   const isValidJWT = (token) => {
     if (typeof token !== 'string') return false;
@@ -58,9 +37,35 @@ export default function HomeScreen() {
     return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
   };
 
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+
+    try {
+      const { exp } = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return exp < currentTime;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return true;
+    }
+  };
+
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+    return <LoggedOutView />;
+  }
+
+  const router = useRouter();
+  const { onLogout } = useAuth();
+
+  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [surveys, setSurveys] = useState([]);
+  const [provider, setProvider] = useState(null);
+
   // Security: Verify authentication on component mount/focus
   // This prevents cached pages from displaying after logout
-  // Check happens below in render logic with LoggedOutView
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
@@ -163,11 +168,6 @@ export default function HomeScreen() {
 
   const sentSurveys = surveys.filter(survey => survey.status === 'sent');
   const completedSurveys = surveys.filter(survey => survey.status === 'completed');
-
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-    return <LoggedOutView />;
-  }
 
   console.log("Provider State in JSX: ", provider);
 
@@ -300,10 +300,7 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
+    boxShadow: '0px 2px 5px 0px rgba(0, 0, 0, 0.05)',
     elevation: 3,
   },
   sectionTitle: {
@@ -342,10 +339,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     marginVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
+    boxShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   cardPressed: {
@@ -374,10 +368,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
+    boxShadow: '0px 2px 5px 0px rgba(0, 0, 0, 0.05)',
     elevation: 3,
   },
   providerName: {

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import NavBar from '@/components/navigation/NavBar';
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "../components/context/AuthContext";
 import BackButton from '../components/BackButton';
 import LoggedOutView from '../components/LoggedOutView';
 
@@ -31,8 +31,7 @@ const Section = ({ title, children }) => {
 };
 
 export default function ProfileScreen() {
-  const { patient } = useLocalSearchParams();
-  const parsedPatient = patient ? JSON.parse(patient) : null;
+  
   const { authState, onLogout } = useAuth();
   const token = authState.token;
 
@@ -54,6 +53,9 @@ export default function ProfileScreen() {
   if (!token || isTokenExpired(token)) {
     return <LoggedOutView />;
   }
+
+  const { patient } = useLocalSearchParams();
+  const parsedPatient = patient ? JSON.parse(patient) : null;
 
   console.log("patient: ", patient);
 

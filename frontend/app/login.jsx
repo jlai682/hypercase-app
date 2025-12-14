@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from '../components/context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import BackButton from '../components/BackButton';
-import { showAlert } from './utils/alerts';
+import { showAlert } from '../components/utils/alerts';
 
 const Login = () => {
   const { loginType = 'patient' } = useLocalSearchParams();

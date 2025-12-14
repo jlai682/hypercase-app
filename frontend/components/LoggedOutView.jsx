@@ -46,10 +46,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: '100%',
     maxWidth: 300,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    boxShadow: '0px 3px 4px 0px rgba(37, 99, 235, 0.2)',
     elevation: 3,
   },
   buttonText: {

@@ -15,7 +15,7 @@ import {
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
-import { useAuth } from "../app/context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 import RecordingRequests from './RecordingRequests';
 
 // Backend API URL - Update this with your Django server address

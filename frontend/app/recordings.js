@@ -5,7 +5,7 @@ import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from '../components/context/AuthContext';
 import RecordingRequests from '../components/RecordingRequests';
 import PreviousRecordings from '../components/PreviousRecordings';
 import config from '../config';
@@ -14,12 +14,42 @@ import NavBar from '@/components/navigation/NavBar';
 import LoggedOutView from '../components/LoggedOutView';
 
 export default function RecordScreen() {
+  // Access the token from AuthContext
+  const { authState } = useAuth();
+  const token = authState?.token;
+
+  // Check if token has a valid JWT format
+  const isValidJWT = (token) => {
+      if (typeof token !== 'string') return false;
+      const parts = token.split('.');
+      return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
+  };
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+      if (!token || !isValidJWT(token)) {
+          return true;
+      }
+
+      try {
+          const { exp } = JSON.parse(atob(token.split('.')[1]));
+          const currentTime = Date.now() / 1000;
+          return exp < currentTime;
+      } catch (error) {
+          console.error("Error parsing token:", error);
+          return true;
+      }
+  };
+
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+      return <LoggedOutView />;
+  }
+  
   const [hasPermission, setHasPermission] = useState(null);
   const router = useRouter();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const { patient: patientParam } = useLocalSearchParams();
-  const { authState } = useAuth();
-  const token = authState.token;
 
   const [recordingRequests, setRecordingRequests] = useState(null);
   const [sentRecordings, setSentRecordings] = useState([]);
@@ -128,19 +158,6 @@ export default function RecordScreen() {
     setCompletedRecordings(completed);
   }, [recordingRequests]);
 
-  const isTokenExpired = (token) => {
-    if (!token) return true;
-
-    try {
-      const { exp } = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      return exp < currentTime;
-    } catch (error) {
-      console.error("Error parsing token:", error);
-      return true;
-    }
-  };
-
   useFocusEffect(
     React.useCallback(() => {
       if (hasPermission === null) {
@@ -186,9 +203,6 @@ export default function RecordScreen() {
     );
   };
 
-  if (!token || isTokenExpired(token)) {
-    return <LoggedOutView />;
-  }
 
   if (hasPermission === false) {
     return (
@@ -256,10 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    boxShadow: '0px 4px 10px 0px rgba(0, 0, 0, 0.08)',
     elevation: 5,
     width: '100%',
     maxWidth: 400,
@@ -278,10 +289,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: '100%',
     maxWidth: 300,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    boxShadow: '0px 3px 4px 0px rgba(37, 99, 235, 0.2)',
     elevation: 3,
   },
   buttonText: {

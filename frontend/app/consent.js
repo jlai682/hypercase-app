@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Checkbox } from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from "../app/context/AuthContext";
+import { useAuth } from "../components/context/AuthContext";
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import LoggedOutView from '../components/LoggedOutView';
 
 // Define API URL at the top level
 import config from '../config';
@@ -25,6 +26,31 @@ const COLORS = {
 };
 
 const ConsentForm = ({ onSubmit, signupType }) => {
+
+  // Access the token from AuthContext
+  const { authState } = useAuth();
+  const token = authState?.token;
+
+  // Check if JWT is expired
+  const isTokenExpired = (token) => {
+      if (!token) return true;
+
+      try {
+          const { exp } = JSON.parse(atob(token.split('.')[1]));
+          const currentTime = Date.now() / 1000;
+          return exp < currentTime;
+      } catch (error) {
+          console.error("Error parsing token:", error);
+          return true;
+      }
+  };
+
+  // Show logged out view if no token or token is expired
+  if (!token || isTokenExpired(token)) {
+      return <LoggedOutView />;
+  }
+
+
   const [isChecked, setIsChecked] = useState(false);
   const [signature, setSignature] = useState('');
   const [date, setDate] = useState('');
@@ -32,35 +58,6 @@ const ConsentForm = ({ onSubmit, signupType }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const [patient, setPatient] = useState(null);
-
-  // Access the token from AuthContext
-  const { authState } = useAuth();
-  const token = authState?.token;
-
-  
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-    if (!token || !isValidJWT(token)) {
-      return true;
-    }
-
-    try {
-      const {exp} = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      return exp < currentTime;
-    } catch (error) {
-      console.error("Error parsing token:", error);
-      return true;
-    }
-  };
-
-  // Check if token has a valid JWT format
-  const isValidJWT = (token) => {
-    if (typeof token !== 'string') return false;
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-  };
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
@@ -439,13 +436,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: COLORS.white,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    boxShadow: '0px 2px 3px 0px rgba(0, 0, 0, 0.1)',
     elevation: 4,
     borderWidth: 1,
     borderColor: COLORS.border,

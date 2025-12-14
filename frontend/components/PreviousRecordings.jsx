@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import config from '../config';
-import { useAuth } from '../app/context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const PreviousRecordings = ({ patient }) => {
@@ -375,10 +375,7 @@ const styles = StyleSheet.create({
     paddingLeft: 15,
     paddingRight: 15,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.05)',
     elevation: 3,
     flexDirection: 'row',
     alignItems: 'center',
