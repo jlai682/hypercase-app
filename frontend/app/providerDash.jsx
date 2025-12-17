@@ -1,50 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Pressable, TextInput, Button } from 'react-native';
+import { StyleSheet, View, Text, Pressable, TextInput, KeyboardAvoidingView, Button } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import config from "../config";
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from "../components/context/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
 import LoggedOutView from '../components/LoggedOutView';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 import { SafeAreaView } from 'react-native';
 
 import { useRouter, useLocalSearchParams } from "expo-router";
 
-
-
-export default function ProviderDash() {
-
-  // Access the token from AuthContext 
-  const { authState } = useAuth();
+function ProviderDash() {
+  const { authState, onLogout } = useAuth();
   const token = authState.token;
-
-  // Check if token has a valid JWT format
-  const isValidJWT = (token) => {
-    if (typeof token !== 'string') return false;
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-  };
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-    if (!token || !isValidJWT(token)) {
-      return true
-    };  // Return true if token is invalid
-
-    const { exp } = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-
-    return exp < currentTime;
-  }
-
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-    return <LoggedOutView />;
-  }
-  
   const router = useRouter();
 
   //State for email search input
@@ -63,26 +35,8 @@ export default function ProviderDash() {
   const [providerFirstName, setProviderFirstName] = useState('');
   const [providerLastName, setProviderLastName] = useState('');
 
-  const { onLogout } = useAuth();
-
-  // Security: Verify authentication on component mount/focus
-  // This prevents cached pages from displaying after logout
-
   // Handle the search functionality for searching for a patient by email
   const handleSearch = async () => {
-    if (!isValidJWT(token)) {
-      console.log("BAD token")
-    }
-    else {
-      console.log("Token is valid")
-    }
-    if (isTokenExpired(token)) {
-      console.error("Token is expired");
-      return;
-    }
-    else {
-      console.log("token is not expired")
-    }
     try {
       if (!token) {
         console.error("No token found, authentication required.");
@@ -160,22 +114,8 @@ export default function ProviderDash() {
     }
   }
 
-  // Fetch all patients associated with the current provider 
+  // Fetch all patients associated with the current provider
   const fetchProviderPatients = async () => {
-    if (!isValidJWT(token)) {
-      console.log("bad token")
-      return;
-    }
-    else {
-      console.log("token is valid")
-    }
-    if (isTokenExpired(token)) {
-      console.log("Token is expired");
-      return;
-    }
-    else {
-      console.log("token is not expired")
-    }
     try {
       if (!token) {
         console.error("No token found, authentication required.");
@@ -210,14 +150,10 @@ export default function ProviderDash() {
     }
   };
 
-  //Fetch the provider's personal information 
+  //Fetch the provider's personal information
   const fetchProviderInfo = async () => {
     if (!token) {
       console.log("No token found, authentication required.");
-      return;
-    }
-    if (isTokenExpired(token)) {
-      console.log("token is expired");
       return;
     }
 
@@ -403,3 +339,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Figtree_400Regular',
   }
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <ProviderDash />
+    </ProtectedRoute>
+  );
+}

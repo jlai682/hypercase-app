@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Checkbox } from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from "../components/context/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import LoggedOutView from '../components/LoggedOutView';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 // Define API URL at the top level
 import config from '../config';
@@ -25,31 +26,9 @@ const COLORS = {
   sectionBg: '#F8FBFF', // Very light blue background for sections
 };
 
-const ConsentForm = ({ onSubmit, signupType }) => {
-
-  // Access the token from AuthContext
+function ConsentForm({ onSubmit, signupType }) {
   const { authState } = useAuth();
   const token = authState?.token;
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-      if (!token) return true;
-
-      try {
-          const { exp } = JSON.parse(atob(token.split('.')[1]));
-          const currentTime = Date.now() / 1000;
-          return exp < currentTime;
-      } catch (error) {
-          console.error("Error parsing token:", error);
-          return true;
-      }
-  };
-
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-      return <LoggedOutView />;
-  }
-
 
   const [isChecked, setIsChecked] = useState(false);
   const [signature, setSignature] = useState('');
@@ -61,7 +40,7 @@ const ConsentForm = ({ onSubmit, signupType }) => {
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
-      if (!token || isTokenExpired(token)) {
+      if (!token) {
         return;
       }
 
@@ -123,57 +102,11 @@ const ConsentForm = ({ onSubmit, signupType }) => {
   //   }
   // };
 
-  // Define the checkAuth function
-  const checkAuth = async () => {
-    if (!token) {
-      console.error("No token found, authentication required.");
-      Alert.alert(
-        "Authentication Required", 
-        "You need to be logged in to view or submit consent forms.",
-        [
-          {
-            text: "Login",
-            onPress: () => router.push('/login')
-          }
-        ]
-      );
-      return;
-    }
-    
-    if (isTokenExpired(token)) {
-      console.error("Token is expired");
-      Alert.alert(
-        "Session Expired", 
-        "Your session has expired. Please log in again.",
-        [
-          {
-            text: "Login",
-            onPress: () => router.push('/login')
-          }
-        ]
-      );
-      return;
-    }
-    
-    // // If we get here, token is valid, proceed with fetching patient info
-    // await fetchPatientInfo();
-  };
-
-  // UseEffect to check auth when token changes
-  useEffect(() => {
-    checkAuth();
-  }, [token]);
 
   const handleSubmit = async () => {
     if (!token) {
       console.error("No token found, authentication required.");
       Alert.alert('Authentication Required', 'Please log in to upload recordings.');
-      return null;
-    }
-    
-    if (isTokenExpired(token)) {
-      console.error("Token is expired");
-      Alert.alert('Session Expired', 'Your session has expired. Please log in again.');
       return null;
     }
 
@@ -268,25 +201,6 @@ const ConsentForm = ({ onSubmit, signupType }) => {
       alert(`Error submitting signature: ${error.message}`);
     }
   };
-
-  if (!token || isTokenExpired(token)) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Authentication Required</Text>
-          <Text style={styles.paragraph}>
-            You need to be logged in to view and submit consent forms.
-          </Text>
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={() => router.push('/login')}
-          >
-            <Text style={styles.buttonText}>GO TO LOGIN</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <ScrollView style={styles.container}>
@@ -555,4 +469,11 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ConsentForm;
+export default function() {
+  const { signupType } = useLocalSearchParams();
+  return (
+    <ProtectedRoute>
+      <ConsentForm signupType={signupType} />
+    </ProtectedRoute>
+  );
+}

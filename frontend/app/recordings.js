@@ -5,47 +5,18 @@ import AudioRecorder from '../components/AudioRecorder';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '../components/context/AuthContext';
+import { useAuth } from '../components/auth/AuthContext';
 import RecordingRequests from '../components/RecordingRequests';
 import PreviousRecordings from '../components/PreviousRecordings';
 import config from '../config';
 import BackButton from '../components/BackButton';
 import NavBar from '@/components/navigation/NavBar';
 import LoggedOutView from '../components/LoggedOutView';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
-export default function RecordScreen() {
-  // Access the token from AuthContext
+function RecordScreen() {
   const { authState } = useAuth();
   const token = authState?.token;
-
-  // Check if token has a valid JWT format
-  const isValidJWT = (token) => {
-      if (typeof token !== 'string') return false;
-      const parts = token.split('.');
-      return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-  };
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-      if (!token || !isValidJWT(token)) {
-          return true;
-      }
-
-      try {
-          const { exp } = JSON.parse(atob(token.split('.')[1]));
-          const currentTime = Date.now() / 1000;
-          return exp < currentTime;
-      } catch (error) {
-          console.error("Error parsing token:", error);
-          return true;
-      }
-  };
-
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-      return <LoggedOutView />;
-  }
-  
   const [hasPermission, setHasPermission] = useState(null);
   const router = useRouter();
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -300,3 +271,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <RecordScreen />
+    </ProtectedRoute>
+  );
+}

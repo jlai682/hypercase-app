@@ -8,12 +8,12 @@ import {
     Platform,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import { useAuth } from "../components/context/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
 import RecordButton from '../components/recordButton';
 import NameRecordingModal from '../components/NameRecordingModal';
 import { useLocalSearchParams } from 'expo-router';
 import LoggedOutView from '../components/LoggedOutView';
-
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 // Backend API URL - Update this with your Django server address
 import config from '../config';
@@ -54,42 +54,9 @@ const storage = {
     }
 };
 
-
-
-export default function AudioRecorder() {
-
-    // Access the token from AuthContext
+function AudioRecorder() {
     const { authState } = useAuth();
     const token = authState?.token;
-
-    // Check if token has a valid JWT format
-    const isValidJWT = (token) => {
-        if (typeof token !== 'string') return false;
-        const parts = token.split('.');
-        return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-    };
-
-    // Check if JWT is expired
-    const isTokenExpired = (token) => {
-        if (!token || !isValidJWT(token)) {
-            return true;
-        }
-
-        try {
-            const { exp } = JSON.parse(atob(token.split('.')[1]));
-            const currentTime = Date.now() / 1000;
-            return exp < currentTime;
-        } catch (error) {
-            console.error("Error parsing token:", error);
-            return true;
-        }
-    };
-
-    // Show logged out view if no token or token is expired
-    if (!token || isTokenExpired(token)) {
-        return <LoggedOutView />;
-    }
-
     const [recording, setRecording] = useState(null);
     const [sound, setSound] = useState(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -516,3 +483,11 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <AudioRecorder />
+    </ProtectedRoute>
+  );
+}

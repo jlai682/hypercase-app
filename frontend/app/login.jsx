@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform} from 'react-native';
+import { Text, TextInput } from'react-native-paper'
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '../components/context/AuthContext';
+import { useAuth } from '../components/auth/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import BackButton from '../components/BackButton';
 import { showAlert } from '../components/utils/alerts';
@@ -50,7 +51,7 @@ const Login = () => {
 
         <TextInput
           style={[styles.input, styles.inputText]}
-          placeholder="Email"
+          placeholder="example@gmail.com"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -59,7 +60,7 @@ const Login = () => {
 
         <TextInput
           style={[styles.input, styles.inputText]}
-          placeholder="Password"
+          placeholder="password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import config from '../config';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const PreviousRecordings = ({ patient }) => {

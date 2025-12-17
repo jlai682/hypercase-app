@@ -8,7 +8,8 @@ import { Text } from 'react-native';
 import NavBar from '../components/navigation/NavBar';
 import LoggedOutView from '../components/LoggedOutView';
 
-import { useAuth } from "../components/context/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 const FeatureCard = ({ iconName, title, description, onPress }) => (
   <Pressable onPress={onPress} style={({ pressed }) => [
@@ -26,53 +27,19 @@ const FeatureCard = ({ iconName, title, description, onPress }) => (
   </Pressable>
 );
 
-export default function HomeScreen() {
-  
-  const { authState } = useAuth();
+function HomeScreen() {
+  const { authState, onLogout } = useAuth();
   const token = authState.token;
-
-  const isValidJWT = (token) => {
-    if (typeof token !== 'string') return false;
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
-  };
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-    if (!token) return true;
-
-    try {
-      const { exp } = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      return exp < currentTime;
-    } catch (error) {
-      console.error("Error parsing token:", error);
-      return true;
-    }
-  };
-
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-    return <LoggedOutView />;
-  }
-
   const router = useRouter();
-  const { onLogout } = useAuth();
 
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState([]);
   const [provider, setProvider] = useState(null);
 
-  // Security: Verify authentication on component mount/focus
-  // This prevents cached pages from displaying after logout
-
   useEffect(() => {
     const fetchPatientProfile = async () => {
       if (!token) {
-        return;
-      }
-      if (isTokenExpired(token)) {
         return;
       }
       try {
@@ -236,22 +203,7 @@ export default function HomeScreen() {
 
 
         </View>
-        <FeatureCard
-          iconName="microphone"
-          title="Recordings"
-          onPress={() => router.push({
-            pathname: '/recordings',
-            params: {
-              patient: JSON.stringify(patient)
-            }
-          })}
-        />
-        <Pressable style={styles.button} onPress={() => router.push({
-          pathname: '/profile',
-          params: { patient: JSON.stringify(patient) }
-        })}>
-          <Text style={styles.buttonText}>Profile</Text>
-        </Pressable>
+        
 
         <Pressable style={styles.button} onPress={onLogout}>
           <Text style={styles.buttonText}>Log Out</Text>
@@ -392,3 +344,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Figtree_400Regular',
   },
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <HomeScreen />
+    </ProtectedRoute>
+  );
+}

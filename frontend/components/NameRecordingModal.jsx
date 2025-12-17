@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./auth/AuthContext";
 import RecordButton from '../components/recordButton';
 import config from '../config';
 import { useRouter, useLocalSearchParams } from "expo-router";

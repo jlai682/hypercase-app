@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import config from '../config';
-import { useAuth } from "../components/context/AuthContext";
+import { useAuth } from "../components/auth/AuthContext";
 import { SafeAreaView } from 'react-native';
 import { StyleSheet, Platform, View, Pressable, FlatList, TouchableOpacity, Text, Alert, ScrollView, Modal, TextInput, Button } from 'react-native';
 import { Image } from 'react-native';
@@ -10,33 +10,11 @@ import { Ionicons } from '@expo/vector-icons';
 import BackButton from '@/components/BackButton';
 import { Audio } from 'expo-av';
 import LoggedOutView from '../components/LoggedOutView';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
-
-
-export default function PatientProfile() {
-
+function PatientProfile() {
   const { authState } = useAuth();
   const token = authState.token;
-
-  // Check if JWT is expired
-  const isTokenExpired = (token) => {
-    if (!token) return true;
-
-    try {
-      const { exp } = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      return exp < currentTime;
-    } catch (error) {
-      console.error("Error parsing token:", error);
-      return true;
-    }
-  };
-
-  // Show logged out view if no token or token is expired
-  if (!token || isTokenExpired(token)) {
-    return <LoggedOutView />;
-  }
-
   const { patientEmail } = useLocalSearchParams();
   const [patient, setPatient] = useState(null);
   const [surveys, setSurveys] = useState([]);
@@ -916,3 +894,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#DC2626',
   },
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <PatientProfile />
+    </ProtectedRoute>
+  );
+}

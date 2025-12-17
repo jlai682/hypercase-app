@@ -8,39 +8,18 @@ import {
     Button,
     TextInput,
 } from 'react-native';
-import { useAuth } from '../../components/context/AuthContext';
+import { useAuth } from '../../components/auth/AuthContext';
 import config from '../../config';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import BackButton from '../../components/BackButton';
 import LoggedOutView from '../../components/LoggedOutView';
+import ProtectedRoute from '../../components/auth/ProtectedRoute';
 
-
-export default function SelectQuestions() {
+function SelectQuestions() {
     const { authState } = useAuth();
     const token = authState.token;
-
     const { patient } = useLocalSearchParams();
-
-    // Check if JWT is expired
-    const isTokenExpired = (token) => {
-        if (!token) return true;
-
-        try {
-            const { exp } = JSON.parse(atob(token.split('.')[1]));
-            const currentTime = Date.now() / 1000;
-            return exp < currentTime;
-        } catch (error) {
-            console.error("Error parsing token:", error);
-            return true;
-        }
-    };
-
-    // Show logged out view if no token or token is expired
-    if (!token || isTokenExpired(token)) {
-        return <LoggedOutView />;
-    }
-
     const [openQuestions, setOpenQuestions] = useState([]);
     const [multipleChoiceQuestions, setMultipleChoiceQuestions] = useState([]);
     const [error, setError] = useState(null);
@@ -259,7 +238,12 @@ const styles = StyleSheet.create({
         borderColor: '#ccc',
         borderWidth: 1,
     },
-
-
-
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <SelectQuestions />
+    </ProtectedRoute>
+  );
+}

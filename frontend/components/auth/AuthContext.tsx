@@ -5,11 +5,22 @@ import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { showAlert } from '../utils/alerts';
 
-const isTokenExpired = (token: string) => {
+const isTokenExpired = (token: string | null): boolean => {
     if (!token) return true;
-    const { exp } = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-    return exp < currentTime;
+    try {
+        const { exp } = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        return exp < currentTime;
+    } catch (error) {
+        console.error("Error parsing token:", error);
+        return true;
+    }
+};
+
+const isValidJWT = (token: string | null): boolean => {
+    if (typeof token !== 'string') return false;
+    const parts = token.split('.');
+    return parts.length === 3 && parts.every(part => /^[A-Za-z0-9\-_=]+$/.test(part));
 };
 
 // Helper function to store tokens
@@ -62,6 +73,9 @@ interface AuthProps {
     onRegister: (email: string, password: string, firstName: string, lastName: string, signupType: string, age?: string) => Promise<any>;
     onLogin: (email: string, password: string, loginType: string) => Promise<any>;
     onLogout: () => Promise<any>;
+    isTokenExpired: (token: string | null) => boolean;
+    isValidJWT: (token: string | null) => boolean;
+    isAuthenticated: () => boolean;
 }
 
 const AuthContext = createContext<AuthProps | undefined>(undefined);
@@ -133,7 +147,8 @@ export const AuthProvider = ({ children }) => {
                         params: {
                             signupType: signupType,
                         },
-                    });                } else {
+                    });                
+                } else {
                     router.push({
                         pathname: '/consent',
                         params: {
@@ -222,17 +237,24 @@ export const AuthProvider = ({ children }) => {
             setAuthState({ token: null, authenticated: false });
 
             // Reset navigation stack completely
-            router.dismissAll();  // Dismisses all screens in the stack
+            router.dismissAll();   
             router.replace('/');
         }
     };
 
+    const isAuthenticatedCheck = (): boolean => {
+        const { token } = authState;
+        return !!(token && isValidJWT(token) && !isTokenExpired(token));
+    };
 
     const value = {
         authState,
         onRegister,
         onLogin,
         onLogout,
+        isTokenExpired,
+        isValidJWT,
+        isAuthenticated: isAuthenticatedCheck,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,41 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useAuth } from '../../components/context/AuthContext';
+import { useAuth } from '../../components/auth/AuthContext';
 import config from '../../config';
 import { ThemedText } from '@/components/ThemedText';
 import { TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '../../components/BackButton';
 import LoggedOutView from '../../components/LoggedOutView';
+import ProtectedRoute from '../../components/auth/ProtectedRoute';
 
-
-
-
-const SurveyResponder = () => {
-
+function SurveyResponder() {
     const { authState } = useAuth();
     const token = authState.token;
-
-    // Check if JWT is expired
-    const isTokenExpired = (token) => {
-        if (!token) return true;
-
-        try {
-            const { exp } = JSON.parse(atob(token.split('.')[1]));
-            const currentTime = Date.now() / 1000;
-            return exp < currentTime;
-        } catch (error) {
-            console.error("Error parsing token:", error);
-            return true;
-        }
-    };
-
-    // Show logged out view if no token or token is expired
-    if (!token || isTokenExpired(token)) {
-        return <LoggedOutView />;
-    }
-
     const [surveyData, setSurveyData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -467,4 +444,10 @@ const styles = StyleSheet.create({
 
 });
 
-export default SurveyResponder;
+export default function() {
+  return (
+    <ProtectedRoute>
+      <SurveyResponder />
+    </ProtectedRoute>
+  );
+}

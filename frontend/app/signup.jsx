@@ -10,7 +10,7 @@ import {
   Platform,               
   ScrollView               
 } from 'react-native';
-import { useAuth } from '../components/context/AuthContext';
+import { useAuth } from '../components/auth/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
 import BackButton from '../components/BackButton';
 

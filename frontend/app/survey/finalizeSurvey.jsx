@@ -10,35 +10,14 @@ import {
 import { TextInput } from 'react-native';
 import { format } from 'date-fns'; 
 import config from '../../config';
-import { useAuth } from '../../components/context/AuthContext';
+import { useAuth } from '../../components/auth/AuthContext';
 import BackButton from '../../components/BackButton';
 import LoggedOutView from '../../components/LoggedOutView';
+import ProtectedRoute from '../../components/auth/ProtectedRoute';
 
-
-export default function FinalizeSurvey() {
-
+function FinalizeSurvey() {
     const { authState } = useAuth();
     const token = authState.token;
-
-    // Check if JWT is expired
-    const isTokenExpired = (token) => {
-        if (!token) return true;
-
-        try {
-            const { exp } = JSON.parse(atob(token.split('.')[1]));
-            const currentTime = Date.now() / 1000;
-            return exp < currentTime;
-        } catch (error) {
-            console.error("Error parsing token:", error);
-            return true;
-        }
-    };
-
-    // Show logged out view if no token or token is expired
-    if (!token || isTokenExpired(token)) {
-        return <LoggedOutView />;
-    }
-    
     const { selectedMC, selectedOpen, patient } = useLocalSearchParams();
     const parsedPatient = patient ? JSON.parse(patient) : null;
     const parsedOpenQuestions = JSON.parse(selectedOpen || '[]');
@@ -200,3 +179,11 @@ const styles = StyleSheet.create({
 
     },
 });
+
+export default function() {
+  return (
+    <ProtectedRoute>
+      <FinalizeSurvey />
+    </ProtectedRoute>
+  );
+}
