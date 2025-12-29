@@ -1,0 +1,45 @@
+// Core domain entities matching your backend models
+
+export interface Patient {
+  id: string | number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  age?: number;
+}
+
+export interface Provider {
+  id: string | number;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface Survey {
+  id: string | number;
+  title: string;
+  issue_date: string;
+  response_date?: string;
+  status: 'sent' | 'completed';
+  patient_id?: string | number;
+}
+
+export interface Recording {
+  id: string | number;
+  title: string;
+  description?: string;
+  file_url: string;
+  created_at: string;
+  patient_id?: string | number;
+}
+
+export interface RecordingRequest {
+  id: string | number;
+  title: string;
+  description: string;
+  status: 'sent' | 'completed';
+  due_date?: string;
+  issue_date: string;
+  patient_id: string | number;
+  recording_id?: string | number;
+}

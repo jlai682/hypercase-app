@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import config from '../../config';
+import config from '@/config';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
-import { showAlert } from '../utils/alerts';
+import { showAlert } from '@/components/utils/alerts';
 
 const isTokenExpired = (token: string | null): boolean => {
     if (!token) return true;
@@ -143,14 +143,14 @@ export const AuthProvider = ({ children }) => {
             
                 if (signupType === "provider") {
                     router.push({
-                        pathname: '/providerDash',
+                        pathname: '/(provider)/dashboard',
                         params: {
                             signupType: signupType,
                         },
-                    });                
+                    } as any);
                 } else {
                     router.push({
-                        pathname: '/consent',
+                        pathname: '/(patient)/consent',
                         params: {
                             signupType: signupType,
                         },
@@ -199,9 +199,9 @@ export const AuthProvider = ({ children }) => {
 
                 // Navigate based on login type
                 if (loginType === 'provider') {
-                    router.push('/providerDash');
+                    router.push('/(provider)/dashboard' as any);
                 } else {
-                    router.push('/patientDash' as any);
+                    router.push('/(patient)/dashboard' as any);
                 }
             } else {
                 // Handle different error types with specific messages
