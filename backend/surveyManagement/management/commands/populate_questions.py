@@ -1,3 +1,8 @@
+# DEPRECATED: Use migrations instead. Kept for manual re-population if needed.
+# The initial survey questions are now automatically populated via the
+# 0004_populate_initial_questions.py data migration.
+# This command is retained only for manual database re-seeding scenarios.
+
 from django.core.management.base import BaseCommand
 from surveyManagement.models import OpenQuestion, MultipleChoiceQuestion, MultipleChoiceOption
 
