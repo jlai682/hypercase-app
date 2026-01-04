@@ -59,9 +59,9 @@ interface Recording {
 }
 
 function RecordingDetail() {
-  const params = useLocalSearchParams<{ id: string }>();
-  const patientId = params.id?.split('/')[0]; // Extract patient ID from path
-  const recordingId = params.id?.split('/')[1]; // Extract recording ID from path
+  const params = useLocalSearchParams<{ id: string; recordingId: string }>();
+  const patientId = params.id; // Patient ID from first [id] segment
+  const recordingId = params.recordingId; // Recording ID from [recordingId] segment
   const { authState } = useAuth();
   const router = useRouter();
   const token = authState?.token;

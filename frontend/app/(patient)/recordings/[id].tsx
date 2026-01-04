@@ -77,7 +77,7 @@ function RecordingDetail() {
       if (!token) return;
 
       try {
-        const response = await fetch(`${config.BACKEND_URL}/api/patient/me/`, {
+        const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
