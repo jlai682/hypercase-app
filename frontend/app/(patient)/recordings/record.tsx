@@ -170,9 +170,31 @@ function AudioRecorder(): React.JSX.Element {
           playsInSilentModeIOS: true,
         });
 
-        const { recording: newRecording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
+        const { recording: newRecording } = await Audio.Recording.createAsync({
+          isMeteringEnabled: true,
+          android: {
+            extension: '.wav',
+            outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+            audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+          },
+          ios: {
+            extension: '.wav',
+            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+            audioQuality: Audio.IOSAudioQuality.MAX,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+            bitRate: 128000,
+          },
+          web: {
+            mimeType: 'audio/wav',
+            bitsPerSecond: 128000,
+          },
+        });
 
         setRecording(newRecording);
         setIsRecording(true);
@@ -194,7 +216,7 @@ function AudioRecorder(): React.JSX.Element {
         const stopPromise = new Promise<void>(resolve => {
           mediaRecorder.onstop = () => {
             // Create a blob from the chunks
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
 
             // Stop all tracks
             if (audioStream) {

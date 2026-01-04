@@ -77,7 +77,7 @@ const NameRecordingModal: React.FC<NameRecordingModalProps> = ({
         }
 
         // Append the file to form data with a proper filename
-        formData.append('file', fileBlob, `${name}.webm`);
+        formData.append('file', fileBlob, `${name}.wav`);
         formData.append('title', name);
         formData.append('description', `Recorded on ${new Date().toLocaleString()}`);
 
