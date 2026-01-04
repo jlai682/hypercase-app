@@ -210,7 +210,7 @@ def submit_survey(request, survey_id):
 
     # Update survey status and response date
     survey.status = 'completed'
-    survey.response_date = datetime.now()
+    survey.response_date = now()
     survey.save()
 
     # Return a success message
