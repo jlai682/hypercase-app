@@ -1,3 +1,18 @@
+# Setup .env file to protect secrets
+
+1. Make a new file named ".env" in the root of backend folder. 
+
+2. Generate a secret key by typing the command in the terminal below: 
+```bash
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
+```
+
+3. Copy and paste the key and set it equal to SECRET_KEY. Your .env file should have the same format as below
+
+```bash
+SECRET_KEY=*copy_and_pasted_key*  
+```
+
 # Steps for getting the backend running:
 
 ** do everything in the backend folder of the directory 
@@ -91,11 +106,3 @@ python manage.py makemigrations
 python manage.py migrate
 
 From  here you should be able to run the project as normally (on any wifi) and signup/login as you please. the only issue is we won't be collaborating on the same datbase, which should be fine for development purposes for now. 
-
-# Django Settings   
-
-SECURITY WARNING: Generate a new SECRET_KEY for production!                                                       
-
-1. Make a file named ".env" in this /backend directory.
-2. Type in the following command into the terminal: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'  
-3. copy and paste this key into the .env file and set it to the SECRET_KEY variable. The file should look like: SECRET_KEY=*copy_and_pasted_key*  

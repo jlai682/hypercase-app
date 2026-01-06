@@ -31,6 +31,15 @@ The platform is designed to integrate acoustic analysis algorithms for clinical 
 
 ### Backend Setup
 
+Make a .env file and copy and paste it: 
+
+```bash
+# Django Settings                                                                                                    
+# SECURITY WARNING: Generate a new SECRET_KEY for production!                                                       
+# You can generate one using: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'                                                                                     │
+SECRET_KEY=dhjl2guj%e8+7$g09z+*%@u3^v98ahyi1l7aaks(2g&1z$xh@u
+```
+
 ```bash
 cd backend
 python3 -m venv venv
