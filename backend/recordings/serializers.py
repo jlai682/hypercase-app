@@ -4,7 +4,7 @@ from rest_framework import serializers
 from django.conf import settings
 from django.utils import timezone
 
-from .models import Recording, RecordingRequest
+from .models import Recording, RecordingRequest, VoiceAnalytics
 from patientManagement.models import Patient
 from providerManagement.models import Provider
 
@@ -143,3 +143,77 @@ class RecordingRequestListSerializer(serializers.ModelSerializer):
         if obj.provider:
             return f"{obj.provider.firstName} {obj.provider.lastName}"
         return None
+
+
+class VoiceAnalyticsSerializer(serializers.ModelSerializer):
+    """Serializer for VoiceAnalytics model."""
+    recording_id = serializers.IntegerField(source='recording.id', read_only=True)
+    recording_title = serializers.CharField(source='recording.title', read_only=True)
+
+    class Meta:
+        model = VoiceAnalytics
+        fields = [
+            'recording_id',
+            'recording_title',
+            'status',
+            'error_message',
+            'processed_at',
+            'processing_duration',
+            # Quality metrics
+            'ambient_noise_level',
+            'signal_to_noise_ratio',
+            'recording_quality',
+            'quality_warnings',
+            # Jitter parameters
+            'jitter_local',
+            'jitter_absolute',
+            'jitter_rap',
+            'jitter_ppq5',
+            'jitter_ddp',
+            # Shimmer parameters
+            'shimmer_local',
+            'shimmer_db',
+            'shimmer_apq3',
+            'shimmer_apq5',
+            'shimmer_apq11',
+            'shimmer_dda',
+            # F0 parameters
+            'f0_mean',
+            'f0_min',
+            'f0_max',
+            'f0_std',
+            'f0_voiced_frames',
+            # CPP
+            'cpp_mean',
+            'cpp_std',
+            # HNR
+            'hnr_mean',
+            'hnr_min',
+            'hnr_max',
+            # LTAS
+            'ltas_slope',
+            'ltas_tilt',
+            # AVQI
+            'avqi_score',
+            'avqi_interpretation',
+            # Metadata
+            'sample_type',
+            'analysis_version',
+            'raw_parameters',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+    def to_representation(self, instance):
+        """Convert NaN values to None for JSON serialization."""
+        import math
+
+        data = super().to_representation(instance)
+
+        # Convert any NaN float values to None
+        for key, value in data.items():
+            if isinstance(value, float) and math.isnan(value):
+                data[key] = None
+
+        return data

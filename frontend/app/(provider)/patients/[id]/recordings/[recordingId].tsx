@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -70,8 +69,6 @@ function RecordingDetail() {
   const [analytics, setAnalytics] = useState<VoiceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
   // Poll for analytics status
   useEffect(() => {
@@ -144,46 +141,6 @@ function RecordingDetail() {
 
     return () => clearInterval(interval);
   }, [recording, recordingId, token]);
-
-  // Cleanup sound on unmount
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, [sound]);
-
-  const playRecording = async () => {
-    if (!recording?.file_url) return;
-
-    try {
-      if (isPlaying && sound) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
-      } else if (sound) {
-        await sound.playAsync();
-        setIsPlaying(true);
-      } else {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: `${config.BACKEND_URL}${recording.file_url}` },
-          { shouldPlay: true }
-        );
-
-        setSound(newSound);
-        setIsPlaying(true);
-
-        newSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlaying(false);
-          }
-        });
-      }
-    } catch (err) {
-      console.error('Error playing recording:', err);
-      Alert.alert('Error', 'Could not play recording');
-    }
-  };
 
   const renderMetric = (label: string, value: number | undefined, unit: string = '') => {
     if (value === undefined || value === null) return null;
@@ -310,9 +267,7 @@ function RecordingDetail() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
-          <BackButton />
-        </View>
+        <BackButton />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#041575" />
           <Text style={styles.loadingText}>Loading recording...</Text>
@@ -324,9 +279,7 @@ function RecordingDetail() {
   if (error || !recording) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
-          <BackButton />
-        </View>
+        <BackButton />
         <View style={styles.centered}>
           <Ionicons name="alert-circle-outline" size={64} color="#E74C3C" />
           <Text style={styles.errorText}>{error || 'Recording not found'}</Text>
@@ -343,9 +296,7 @@ function RecordingDetail() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#041575" />
-          </TouchableOpacity>
+          <BackButton />
           <Text style={styles.headerTitle}>Recording Details</Text>
           <View style={{ width: 24 }} />
         </View>
@@ -377,18 +328,6 @@ function RecordingDetail() {
             </View>
           </View>
         </View>
-
-        {/* Play Button */}
-        <TouchableOpacity style={styles.playButton} onPress={playRecording}>
-          <Ionicons
-            name={isPlaying ? "pause-circle" : "play-circle"}
-            size={80}
-            color="#041575"
-          />
-          <Text style={styles.playButtonText}>
-            {isPlaying ? 'Pause' : 'Play Recording'}
-          </Text>
-        </TouchableOpacity>
 
         {/* Voice Analytics */}
         {renderAnalytics()}
