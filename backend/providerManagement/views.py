@@ -26,7 +26,13 @@ def providerRegister(request):
 
         if '@' not in data['email']:
             return Response(
-                {'error': 'Please enter a valid email address'}, 
+                {'error': 'Please enter a valid email address'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(email=data['email']).exists():
+            return Response(
+                {'error': 'An account with this email already exists'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -153,6 +159,32 @@ def search_patient_by_email(request):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_patient_provider_connection(request):
+    try:
+        patient_id = request.data.get('patient_id')
+        provider = Provider.objects.get(user=request.user)
+
+        connection = ProviderPatientConnection.objects.get(
+            provider=provider,
+            patient_id=patient_id
+        )
+        connection.delete()
+
+        return Response(
+            {'message': 'Connection deleted successfully'},
+            status=status.HTTP_200_OK
+        )
+
+    except ProviderPatientConnection.DoesNotExist:
+        return Response(
+            {'error': 'Connection not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

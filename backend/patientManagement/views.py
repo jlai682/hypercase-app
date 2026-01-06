@@ -31,10 +31,16 @@ def patient_register(request):
         
         if '@' not in data['email']:
             return Response(
-                {'error': 'Please enter a valid email address'}, 
+                {'error': 'Please enter a valid email address'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
+        if User.objects.filter(email=data['email']).exists():
+            return Response(
+                {'error': 'An account with this email already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         data['username'] = data['email']
         
         user_form = UserForm(data)
@@ -92,10 +98,10 @@ def patient_login(request):
         
         if '@' not in email:
             return Response(
-                {'error': 'Please enter a valid email address'}, 
+                {'error': 'Please enter a valid email address'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         user = authenticate(username=email, password=password)
         
         if user is not None:

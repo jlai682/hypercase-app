@@ -12,8 +12,9 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Recording, RecordingRequest
-from .serializers import RecordingSerializer, RecordingRequestSerializer, RecordingRequestListSerializer
+from .models import Recording, RecordingRequest, VoiceAnalytics
+from .serializers import RecordingSerializer, RecordingRequestSerializer, RecordingRequestListSerializer, VoiceAnalyticsSerializer
+from .analytics.tasks import process_voice_analytics_async
 from patientManagement.models import Patient
 from providerManagement.models import Provider, ProviderPatientConnection
 
@@ -80,7 +81,7 @@ def upload_recording(request):
         )
 
     data = {
-        'patient_id': patient.id, 
+        'patient_id': patient.id,
         'audio_file': audio_file,
         'title': request.data.get('title', audio_file.name or 'Untitled Recording'),
         'description': request.data.get('description', ''),
@@ -90,7 +91,21 @@ def upload_recording(request):
     serializer = RecordingSerializer(data=data, context={'request': request})
     if serializer.is_valid():
         recording = serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # Start background analytics processing (non-blocking)
+        recording.analytics_status = 'pending'
+        recording.save(update_fields=['analytics_status'])
+
+        # Process in background thread
+        process_voice_analytics_async(recording.id)
+
+        logger.info(f"Started analytics processing for recording {recording.id}")
+
+        return Response({
+            **serializer.data,
+            'analytics_status': 'pending',
+            'message': 'Recording uploaded successfully. Analytics processing started.'
+        }, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -401,5 +416,146 @@ def serve_recording(request, file_path):
     response['Accept-Ranges'] = 'bytes'
     response['Access-Control-Allow-Origin'] = '*'
     response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
-    
+
     return response
+
+
+# Voice Analytics Endpoints
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_recording_analytics(request, recording_id):
+    """Get voice analytics for a recording."""
+
+    # Get recording and verify access
+    try:
+        recording = Recording.objects.get(id=recording_id)
+    except Recording.DoesNotExist:
+        return Response({'error': 'Recording not found'}, status=404)
+
+    # Authorization check
+    is_authorized = False
+    try:
+        requester_patient = Patient.objects.get(user=request.user)
+        if requester_patient.id == recording.patient_id:
+            is_authorized = True
+    except Patient.DoesNotExist:
+        pass
+
+    if not is_authorized:
+        try:
+            provider = Provider.objects.get(user=request.user)
+            if ProviderPatientConnection.objects.filter(
+                provider=provider, patient=recording.patient
+            ).exists():
+                is_authorized = True
+        except Provider.DoesNotExist:
+            pass
+
+    if not is_authorized:
+        return Response({'error': 'Unauthorized'}, status=403)
+
+    # Get analytics
+    try:
+        analytics = VoiceAnalytics.objects.get(recording_id=recording_id)
+        serializer = VoiceAnalyticsSerializer(analytics)
+        return Response(serializer.data)
+    except VoiceAnalytics.DoesNotExist:
+        return Response({
+            'recording_id': recording_id,
+            'status': recording.analytics_status,
+            'message': 'Analytics not yet available'
+        })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_analytics_status(request, recording_id):
+    """Get processing status (for frontend polling)."""
+
+    try:
+        recording = Recording.objects.get(id=recording_id)
+    except Recording.DoesNotExist:
+        return Response({'error': 'Recording not found'}, status=404)
+
+    # Authorization check (same as above)
+    is_authorized = False
+    try:
+        requester_patient = Patient.objects.get(user=request.user)
+        if requester_patient.id == recording.patient_id:
+            is_authorized = True
+    except Patient.DoesNotExist:
+        pass
+
+    if not is_authorized:
+        try:
+            provider = Provider.objects.get(user=request.user)
+            if ProviderPatientConnection.objects.filter(
+                provider=provider, patient=recording.patient
+            ).exists():
+                is_authorized = True
+        except Provider.DoesNotExist:
+            pass
+
+    if not is_authorized:
+        return Response({'error': 'Unauthorized'}, status=403)
+
+    response_data = {
+        'recording_id': recording_id,
+        'status': recording.analytics_status,
+    }
+
+    if hasattr(recording, 'analytics'):
+        analytics = recording.analytics
+        response_data.update({
+            'analytics_status': analytics.status,
+            'processed_at': analytics.processed_at,
+            'error_message': analytics.error_message,
+            'avqi_score': analytics.avqi_score,
+        })
+
+    return Response(response_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def retry_analytics(request, recording_id):
+    """Retry failed analytics processing."""
+
+    try:
+        recording = Recording.objects.get(id=recording_id)
+    except Recording.DoesNotExist:
+        return Response({'error': 'Recording not found'}, status=404)
+
+    # Authorization check (same as above)
+    is_authorized = False
+    try:
+        requester_patient = Patient.objects.get(user=request.user)
+        if requester_patient.id == recording.patient_id:
+            is_authorized = True
+    except Patient.DoesNotExist:
+        pass
+
+    if not is_authorized:
+        try:
+            provider = Provider.objects.get(user=request.user)
+            if ProviderPatientConnection.objects.filter(
+                provider=provider, patient=recording.patient
+            ).exists():
+                is_authorized = True
+        except Provider.DoesNotExist:
+            pass
+
+    if not is_authorized:
+        return Response({'error': 'Unauthorized'}, status=403)
+
+    # Restart processing
+    recording.analytics_status = 'pending'
+    recording.save(update_fields=['analytics_status'])
+
+    process_voice_analytics_async(recording_id)
+
+    return Response({
+        'status': 'pending',
+        'message': 'Analytics processing restarted'
+    }, status=202)

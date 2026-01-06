@@ -1,3 +1,8 @@
+# DEPRECATED: Use migrations instead. Kept for manual re-population if needed.
+# The initial survey questions are now automatically populated via the
+# 0004_populate_initial_questions.py data migration.
+# This command is retained only for manual database re-seeding scenarios.
+
 from django.core.management.base import BaseCommand
 from surveyManagement.models import OpenQuestion, MultipleChoiceQuestion, MultipleChoiceOption
 
@@ -59,7 +64,7 @@ class Command(BaseCommand):
         # Multiple Choice Questions
         mc_questions_and_options = {
             "What is the main concern or problem that we can help you with today? (you may pick more than one)": [
-                "Difficulty with your voice",
+                "Difficulty with my voice",
                 "Difficulty breathing",
                 "Tracheostomy Management",
                 "Airway Stenosis",
@@ -71,7 +76,7 @@ class Command(BaseCommand):
                 "Snoring",
                 "Other (write in)"
             ],
-            "How severe is the problem impacting your life?": [str(i) for i in range(11)],  # 0 to 10
+            "How severe is the problem impacting your life?": [str(i) for i in range(11)],  
             "Have you seen another doctor about this concern?": ["Yes", "No"],
             "Were any studies done recently we need to review?": [
                 "X-rays", "CT", "MRI", "PET", "Labs", "Sleep Study", "Hearing Test", "Other"
@@ -80,7 +85,7 @@ class Command(BaseCommand):
                 "Never", "Monthly or less", "2-4 times per month", "2-3 times per week", "4 or more times per week"
             ],
             "How many standard drinks containing alcohol do you have on a typical day?": [
-                "1 or 2", "3 or 4", "5 or 6", "7 to 9", "10 or more"
+                "0", "1 or 2", "3 or 4", "5 or 6", "7 to 9", "10 or more"
             ],
             "How often do you have 6 or more drinks on one occasion?": [
                 "Never", "Less than monthly", "Monthly", "Weekly", "Daily or almost daily"

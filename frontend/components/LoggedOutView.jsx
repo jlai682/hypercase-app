@@ -2,12 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 
-/**
- * LoggedOutView Component
- * Displays a message when user is logged out and provides a button to navigate to login
- *
- * @param {string} loginRoute - The route to navigate to when the login button is pressed (default: '/login')
- */
 export default function LoggedOutView({ loginRoute = '/' }) {
   const router = useRouter();
 
@@ -46,10 +40,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: '100%',
     maxWidth: 300,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    boxShadow: '0px 3px 4px 0px rgba(37, 99, 235, 0.2)',
     elevation: 3,
   },
   buttonText: {

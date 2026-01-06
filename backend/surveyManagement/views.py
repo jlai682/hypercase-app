@@ -11,36 +11,9 @@ from .models import Survey
 from patientManagement.models import Patient
 from providerManagement.models import Provider
 from datetime import datetime
-from .serializers import OpenQuestionSerializer, MultipleChoiceQuestionSerializer
+import json
+from .serializers import OpenQuestionSerializer, MultipleChoiceQuestionSerializer, OpenQuestionResponseSerializer, MultipleChoiceResponseSerializer
 from .models import OpenQuestion, MultipleChoiceOption, MultipleChoiceQuestion, MultipleChoiceResponse, OpenQuestionResponse
-
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_surveys_by_patient(request, patient_id):
-    try:
-        # Retrieve all surveys for the given patient
-        surveys = Survey.objects.filter(patient__id=patient_id)
-
-        # Manually construct the response data
-        survey_data = []
-        for survey in surveys:
-            survey_data.append({
-                "id": survey.id,
-                "title": survey.title,
-                "issue_date": survey.issue_date,
-                "response_date": survey.response_date,
-                "provider": survey.provider.id,  # You can return provider's ID or other details
-                "patient": survey.patient.id,  # Returning the patient ID
-                "status": survey.status
-            })
-        
-        return Response(survey_data, status=status.HTTP_200_OK)
-
-    except Patient.DoesNotExist:
-        return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
-    
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -103,6 +76,32 @@ def create_survey(request):
     except Exception as e:
         print("Survey creation error:", e)
         return Response({'error': 'Something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_surveys_by_patient_for_provider(request, patient_id):
+    try:
+        # Retrieve all surveys for the given patient
+        surveys = Survey.objects.filter(patient__id=patient_id)
+
+        # Manually construct the response data
+        survey_data = []
+        for survey in surveys:
+            survey_data.append({
+                "id": survey.id,
+                "title": survey.title,
+                "issue_date": survey.issue_date,
+                "response_date": survey.response_date,
+                "provider": survey.provider.id,   
+                "patient": survey.patient.id,   
+                "status": survey.status
+            })
+        
+        return Response(survey_data, status=status.HTTP_200_OK)
+
+    except Patient.DoesNotExist:
+        return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
     
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -137,99 +136,26 @@ def get_questions_by_survey(request, survey_id):
     try:
         # Fetch the survey based on the given survey_id
         survey = Survey.objects.get(id=survey_id)
-        
+
         # Fetch the open question responses for the survey
         open_responses = OpenQuestionResponse.objects.filter(survey=survey)
-        
+
         # Fetch the multiple choice responses and include the options
         multiple_choice_responses = MultipleChoiceResponse.objects.filter(survey=survey).select_related('question', 'selected_option')
-        
-        # Format the data to include the options for multiple choice questions
-        formatted_multiple_choice_responses = []
-        for response in multiple_choice_responses:
-            # Get all the options for the associated question
-            options = MultipleChoiceOption.objects.filter(question=response.question)
-            formatted_multiple_choice_responses.append({
-                'question': {
-                    'id': response.question.id,  # or any other field you want to include
-                    'question_description': response.question.question_description
-                },
-                'options': [
-                    {
-                        'id': option.id,
-                        'option': option.option
-                    } for option in options
-                ],
-                'selected_option': response.selected_option.option if response.selected_option else None
-            })
-        
-        # Format the open question responses
-        formatted_open_responses = []
-        for response in open_responses:
-            formatted_open_responses.append({
-                'question': {
-                    'id': response.question.id,  # or any other field you want to include
-                    'question_description': response.question.question_description
-                },
-                'response': response.response
-            })
+
+        # Use serializers to format the data
+        open_responses_data = OpenQuestionResponseSerializer(open_responses, many=True).data
+        multiple_choice_responses_data = MultipleChoiceResponseSerializer(multiple_choice_responses, many=True).data
 
         # Combine the results into a single response
-        return JsonResponse({
+        return Response({
             'survey_title': survey.title,
-            'multiple_choice_responses': formatted_multiple_choice_responses,
-            'open_responses': formatted_open_responses
+            'multiple_choice_responses': multiple_choice_responses_data,
+            'open_responses': open_responses_data
         })
-    
+
     except Survey.DoesNotExist:
-        return JsonResponse({'error': 'Survey not found'}, status=404)
-    
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def submit_survey(request, survey_id):
-    try:
-        survey = Survey.objects.get(id=survey_id)
-    except Survey.DoesNotExist:
-        return Response({"error": "Survey not found."}, status=status.HTTP_404_NOT_FOUND)
-
-    # Get data from the request
-    mc_responses = request.data.get("multiple_choice_responses", [])
-    open_responses = request.data.get("open_responses", [])
-
-    # Update multiple choice responses
-    for mc in mc_responses:
-        question_id = mc.get("question_id")
-        selected_option_id = mc.get("selected_option_id")
-
-        try:
-            response = MultipleChoiceResponse.objects.get(survey=survey, question__id=question_id)
-            selected_option = MultipleChoiceOption.objects.get(id=selected_option_id)
-            response.selected_option = selected_option
-            response.save()
-        except (MultipleChoiceResponse.DoesNotExist, MultipleChoiceOption.DoesNotExist):
-            return Response({"error": f"Invalid multiple choice question or option for question_id {question_id}."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-    # Update open question responses
-    for oq in open_responses:
-        question_id = oq.get("question_id")
-        response_text = oq.get("response")
-
-        try:
-            response = OpenQuestionResponse.objects.get(survey=survey, question__id=question_id)
-            response.response = response_text
-            response.save()
-        except OpenQuestionResponse.DoesNotExist:
-            return Response({"error": f"Invalid open question ID {question_id}."}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Update survey status and response date
-    survey.status = 'completed'
-    survey.response_date = datetime.now()
-    survey.save()
-
-    return Response({"message": "Survey submitted successfully."}, status=status.HTTP_200_OK)
-
-import json
+        return Response({'error': 'Survey not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -260,7 +186,7 @@ def submit_survey(request, survey_id):
                             status=status.HTTP_400_BAD_REQUEST)
 
     # Process Open Question Responses
-    for key, oq in open_responses.items():  # Loop over the dictionary (0, 1, etc.)
+    for key, oq in open_responses.items():   
         try:
             # Ensure that questionObject is not a string
             if isinstance(oq.get("questionObject"), str):
@@ -284,7 +210,7 @@ def submit_survey(request, survey_id):
 
     # Update survey status and response date
     survey.status = 'completed'
-    survey.response_date = datetime.now()
+    survey.response_date = now()
     survey.save()
 
     # Return a success message
