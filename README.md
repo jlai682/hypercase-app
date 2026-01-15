@@ -1,5 +1,7 @@
 # AcoustiCare
 
+![AcoustiCare Homepage](homepage.png)
+
 A cross-platform mobile application for remote voice analysis and patient-provider communication in clinical voice assessment.
 
 ## Overview
