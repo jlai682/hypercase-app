@@ -1,106 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 
-import { useAuth } from '@/components/auth/AuthContext';
 import RecordingRequests from '@/components/patient/RecordingRequests';
 import PreviousRecordings from '@/components/patient/PreviousRecordings';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Patient, RecordingRequest } from '@/types';
-import config from '@/config';
+import { usePatientProfile, useRecordingRequests } from '@/hooks/queries';
 
 
 function RecordScreen(): React.JSX.Element {
+    // React Query hooks
+    const { data: patient } = usePatientProfile();
+    const { data: recordingRequests = [] } = useRecordingRequests();
 
-    const { authState } = useAuth();
-    const token = authState?.token;
-
-    const [recordingRequests, setRecordingRequests] = useState<RecordingRequest[] | null>(null);
-    const [sentRecordings, setSentRecordings] = useState<RecordingRequest[]>([]);
-    const [patientProfile, setPatientProfile] = useState<Patient | null>(null);
-
-    const { patient: patientParam } = useLocalSearchParams();
-
-    useEffect(() => {
-        const fetchPatientProfile = async (): Promise<void> => {
-            if (patientParam || !token) return; // Skip if patient already provided or no token
-
-            try {
-                const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
-                    method: 'GET',
-                    headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    },
-                });
-
-                // If 403, this user is not a patient (likely a provider), silently skip
-                if (response.status === 403) {
-                    return;
-                }
-
-                if (response.ok) {
-                    const data: Patient = await response.json();
-                    console.log("Fetched patient profile:", data);
-                    setPatientProfile(data);
-                } else {
-                    console.error('Failed to fetch patient profile');
-                }
-            } catch (error) {
-                console.error('Error fetching patient profile:', error);
-            }
-        };
-
-        fetchPatientProfile();
-    }, [token, patientParam]);
-
-    useFocusEffect(
-        useCallback(() => {
-            const fetchRecordingInfo = async (): Promise<void> => {
-                try {
-                    const recordingResponse = await fetch(`${config.BACKEND_URL}/api/recordings/recording-requests/my-requests/`, {
-                        method: 'GET',
-                        headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        },
-                    })
-
-                    // If 403, this user is not a patient (likely a provider), silently skip
-                    if (recordingResponse.status === 403) {
-                        return;
-                    }
-
-                    if (!recordingResponse.ok) {
-                        throw new Error('Failed to fetch recording requests');
-                    }
-
-                    const recordingData: RecordingRequest[] = await recordingResponse.json();
-                    setRecordingRequests(recordingData);
-                    console.log("Recording Requests received: ", recordingData);
-                } catch (error) {
-                    console.error('Error fetching recordings:', error);
-                }
-            };
-
-            if (token) {
-                fetchRecordingInfo();
-            } else {
-                console.log("no token found");
-            }
-        }, [token])
+    // Filter sent recordings
+    const sentRecordings = useMemo(() =>
+        recordingRequests.filter((req) => req.status === 'sent'),
+        [recordingRequests]
     );
-
-    useEffect(() => {
-        if (!recordingRequests) return;
-
-        const sent = recordingRequests.filter((req: RecordingRequest) => req.status === 'sent');
-
-        setSentRecordings(sent);
-    }, [recordingRequests]);
-
-    const patientForComponents: Patient = patientProfile;
 
     return (
         <SafeAreaView style={styles.safeContainer}>
@@ -108,9 +25,9 @@ function RecordScreen(): React.JSX.Element {
             </View>
             <RecordingRequests
                 sentRequests={JSON.stringify(sentRecordings)}
-                patient={JSON.stringify(patientForComponents)}
+                patient={JSON.stringify(patient)}
             />
-            <PreviousRecordings patient={JSON.stringify(patientForComponents)} />
+            <PreviousRecordings patient={JSON.stringify(patient)} />
         </SafeAreaView>
     );
 }

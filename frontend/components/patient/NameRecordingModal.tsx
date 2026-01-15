@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from "expo-router";
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from "@/components/auth/AuthContext";
 import config from '@/config';
 
@@ -34,6 +35,7 @@ const NameRecordingModal: React.FC<NameRecordingModalProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const API_URL = `${config.BACKEND_URL}/api/recordings/upload/`;
 
@@ -236,6 +238,8 @@ const NameRecordingModal: React.FC<NameRecordingModalProps> = ({
               Alert.alert('Failed to complete request', 'The recording was uploaded but the request could not be marked as complete.');
             } else {
               console.log('Request marked as completed!');
+              // Invalidate the recording-requests cache so the UI updates
+              queryClient.invalidateQueries({ queryKey: ['recording-requests'] });
               Alert.alert('Success', 'Recording uploaded and request completed.');
             }
           } catch (error) {

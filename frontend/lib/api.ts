@@ -18,7 +18,8 @@ export async function apiFetch<T>(endpoint: string, token: string, options?: Req
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new ApiError(error.detail || 'Request failed', response.status);
+    // Handle both Django REST framework style ('detail') and custom backend style ('error')
+    throw new ApiError(error.detail || error.error || 'Request failed', response.status);
   }
 
   if (response.status === 204) return undefined as T;
