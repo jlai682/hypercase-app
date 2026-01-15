@@ -1,6 +1,6 @@
 # AcoustiCare
 
-![AcoustiCare Homepage](homepage.png)
+<img src="homepage.png" alt="AcoustiCare Homepage" width="700">
 
 A cross-platform mobile application for remote voice analysis and patient-provider communication in clinical voice assessment.
 
