@@ -1,54 +1,17 @@
-import { StyleSheet, View, Pressable, ScrollView, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React from 'react';
 
-
-import { useAuth } from "@/components/auth/AuthContext";
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { usePatientSurveys } from '@/hooks/queries';
 import { Survey } from '@/types';
-import config from "@/config";
 
 function SurveysScreen() {
-  const { authState } = useAuth();
-  const token = authState.token;
   const router = useRouter();
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [surveys, setSurveys] = useState<Survey[]>([]);
-
-  useFocusEffect(
-    useCallback(() => {
-      const fetchSurveys = async (): Promise<void> => {
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-
-        try {
-          const surveysResponse = await fetch(`${config.BACKEND_URL}/api/surveyManagement/get_surveys_by_patient/`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          if (!surveysResponse.ok) throw new Error('Failed to fetch surveys data');
-
-          const surveysData: Survey[] = await surveysResponse.json();
-          setSurveys(surveysData);
-          console.log("Surveys Data received: ", surveysData);
-        } catch (error) {
-          console.error('Error fetching surveys:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchSurveys();
-    }, [token])
-  );
+  // React Query hook with pull-to-refresh support
+  const { data: surveys = [], isLoading: loading, refetch, isRefetching } = usePatientSurveys();
 
   const handleSurveyPress = (survey: Survey): void => {
     router.push(`/(patient)/surveys/respond/${survey.id}` as any);
@@ -63,7 +26,10 @@ function SurveysScreen() {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+      >
         {loading ? (
           <ActivityIndicator size="large" color="#041575" style={{ marginTop: 40 }} />
         ) : (

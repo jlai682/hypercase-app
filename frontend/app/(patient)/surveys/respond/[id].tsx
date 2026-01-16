@@ -15,10 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-import { useAuth } from '@/components/auth/AuthContext';
 import BackButton from '@/components/ui/BackButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import config from '@/config';
+import { useSurveyQuestions, useSubmitSurvey } from '@/hooks/queries';
 import {
   Option,
   MultipleChoiceQuestion,
@@ -26,12 +25,6 @@ import {
 } from '@/types';
 
 // Component-specific types
-interface SurveyData {
-  survey_title: string;
-  multiple_choice_responses: MultipleChoiceQuestion[];
-  open_responses: OpenResponseQuestion[];
-}
-
 interface SelectedOptions {
   [key: number]: Option;
 }
@@ -72,55 +65,18 @@ const RadioButton: React.FC<RadioButtonProps> = ({ selected, onSelect, label }) 
 );
 
 function SurveyResponder(): React.JSX.Element {
-  const { authState } = useAuth();
-  const token = authState?.token;
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // React Query hooks
+  const { data: surveyData, isLoading: loading, error: queryError } = useSurveyQuestions(id);
+  const submitMutation = useSubmitSurvey();
+
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
   const [openResponses, setOpenResponses] = useState<OpenResponses>({});
   const [multipleChoiceResponses, setMultipleChoiceResponses] = useState<MultipleChoiceResponse[]>([]);
 
-  // Fetch survey data on mount
-  useEffect(() => {
-    const fetchSurveyData = async (): Promise<void> => {
-      if (!token || !id) {
-        setError('Missing authentication or survey ID');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${config.BACKEND_URL}/api/surveyManagement/survey_questions/${id}/`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Survey not found');
-        }
-
-        const data: SurveyData = await response.json();
-        console.log('Survey data:', data);
-        setSurveyData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch survey');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSurveyData();
-  }, [id, token]);
+  const error = queryError?.message || null;
 
   // Update multiple choice responses when selected options change
   useEffect(() => {
@@ -155,8 +111,8 @@ function SurveyResponder(): React.JSX.Element {
     }));
   };
 
-  const submitSurvey = async (): Promise<void> => {
-    if (!surveyData || !token || !id) return;
+  const submitSurvey = (): void => {
+    if (!surveyData || !id) return;
 
     // Validate all questions are answered
     const totalMultipleChoice = surveyData.multiple_choice_responses.length;
@@ -176,41 +132,28 @@ function SurveyResponder(): React.JSX.Element {
       return;
     }
 
-    try {
-      const data = {
-        multiple_choice_responses: multipleChoiceResponses,
-        open_responses: openResponses,
-      };
+    const responses = {
+      multiple_choice_responses: multipleChoiceResponses,
+      open_responses: openResponses,
+    };
 
-      const response = await fetch(
-        `${config.BACKEND_URL}/api/surveyManagement/submit/${id}/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Error submitting survey');
-      }
-
-      const result = await response.json();
-      console.log('Survey submitted successfully:', result);
-
-      Alert.alert('Success', 'Survey submitted successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.push('/(patient)/surveys'),
+    submitMutation.mutate(
+      { surveyId: id, responses },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Survey submitted successfully!', [
+            {
+              text: 'OK',
+              onPress: () => router.push('/(patient)/surveys'),
+            },
+          ]);
         },
-      ]);
-    } catch (err) {
-      console.error('Error submitting survey:', err);
-      Alert.alert('Error', 'Failed to submit survey. Please try again.');
-    }
+        onError: (err) => {
+          console.error('Error submitting survey:', err);
+          Alert.alert('Error', 'Failed to submit survey. Please try again.');
+        },
+      }
+    );
   };
 
   if (loading) {
@@ -318,8 +261,14 @@ function SurveyResponder(): React.JSX.Element {
               )}
             </View>
 
-            <Pressable style={styles.submitButton} onPress={submitSurvey}>
-              <Text style={styles.submitButtonText}>Submit</Text>
+            <Pressable
+              style={[styles.submitButton, submitMutation.isPending && { opacity: 0.6 }]}
+              onPress={submitSurvey}
+              disabled={submitMutation.isPending}
+            >
+              <Text style={styles.submitButtonText}>
+                {submitMutation.isPending ? 'Submitting...' : 'Submit'}
+              </Text>
             </Pressable>
           </View>
         </ScrollView>

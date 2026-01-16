@@ -4,6 +4,7 @@ import config from '@/config';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { showAlert } from '@/components/utils/alerts';
+import { queryClient } from '@/app/_layout';
 
 const isTokenExpired = (token: string | null): boolean => {
     if (!token) return true;
@@ -221,6 +222,9 @@ export const AuthProvider = ({ children }) => {
 
 
     const onLogout = async () => {
+        // Clear React Query cache
+        queryClient.clear();
+
         if (Platform.OS === 'web') {
             // For web, clear all storage and force full page reload
             localStorage.removeItem('my-jwt');
@@ -237,7 +241,7 @@ export const AuthProvider = ({ children }) => {
             setAuthState({ token: null, authenticated: false });
 
             // Reset navigation stack completely
-            router.dismissAll();   
+            router.dismissAll();
             router.replace('/');
         }
     };

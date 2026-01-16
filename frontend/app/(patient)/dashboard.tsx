@@ -1,103 +1,28 @@
 import { StyleSheet, View, Pressable, ScrollView, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
-import config from "@/config";
 import { useAuth } from "@/components/auth/AuthContext";
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { usePatientProfile, usePatientSurveys, usePatientProvider } from '@/hooks/queries';
 
-import { Patient, Provider, Survey } from '@/types';
+import { Survey } from '@/types';
 
 function HomeScreen() {
-  const { authState, onLogout } = useAuth();
-  const token = authState.token;
-
+  const { onLogout } = useAuth();
   const router = useRouter();
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [provider, setProvider] = useState<Provider | null>(null);
-  const [surveys, setSurveys] = useState<Survey[]>([]);
-  
+  // React Query hooks - fetches run in parallel automatically
+  const { data: patient, isLoading: loadingPatient } = usePatientProfile();
+  const { data: surveys = [], isLoading: loadingSurveys } = usePatientSurveys();
+  const { data: provider, isLoading: loadingProvider } = usePatientProvider();
 
-  useEffect(() => {
-    const fetchPatientProfile = async (): Promise<void> => {
-      if (!token) {
-        return;
-      }
-      try {
-        const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        console.log("GOT REQUEST")
-        
-        console.log(response)
-
-        // If 403, this user is not a patient (likely a provider), silently skip
-        if (response.status === 403) {
-          setLoading(false);
-          return;
-        }
-
-        if (!response.ok) throw new Error('Failed to fetch patient data');
-
-        const patientData: Patient = await response.json();
-        setPatient(patientData);
-        console.log("Patient Data received: ", patientData);
-
-        // After fetching the patient, fetch the associated surveys
-        const surveysResponse = await fetch(`${config.BACKEND_URL}/api/surveyManagement/get_surveys_by_patient/`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!surveysResponse.ok) throw new Error('Failed to fetch surveys data');
-
-        const surveysData: Survey[] = await surveysResponse.json();
-        setSurveys(surveysData);
-        console.log("Surveys Data received: ", surveysData);
-
-        const providerResponse = await fetch(`${config.BACKEND_URL}/api/providerManagement/get_provider_by_patient/`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!providerResponse.ok) throw new Error('Failed to fetch provider data');
-
-        const providerData: { provider: Provider } = await providerResponse.json();
-        setProvider(providerData.provider);
-        console.log("Provider Data received: ", providerData);
-
-      } catch (error) {
-        console.error('Error fetching patient profile or surveys:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (token) {
-      fetchPatientProfile();
-    } else {
-      console.log("No token found");
-    }
-  }, [token]);
+  const loading = loadingPatient || loadingSurveys || loadingProvider;
 
   const handleSurveyPress = (survey: Survey): void => {
       router.push(`/(patient)/surveys/respond/${survey.id}` as any);
-  
-    };
+  };
 
   const sentSurveys: Survey[] = surveys.filter((survey: Survey) => survey.status === 'sent');
 
