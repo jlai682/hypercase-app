@@ -380,24 +380,6 @@ function PatientDetailsScreen(): React.JSX.Element {
   };
 
   /**
-   * Handle recording request press
-   */
-  const handleRecordingRequestPress = (request: RecordingRequest): void => {
-    if (request.status === 'completed' && request.recording_id) {
-      router.push({
-        pathname: `/(provider)/patients/${id}/recordings/${request.recording_id}`,
-      } as any);
-    } else {
-      router.push({
-        pathname: '/recordings/fulfill-request',
-        params: {
-          requestId: request.id,
-        },
-      } as any);
-    }
-  };
-
-  /**
    * Handle previous recording press
    */
   const handlePreviousRecordingPress = (recording: Recording): void => {
@@ -408,7 +390,9 @@ function PatientDetailsScreen(): React.JSX.Element {
 
   // Filter surveys and recordings
   const pendingSurveys = surveys.filter((survey) => survey.status === 'sent');
-  const completedSurveys = surveys.filter((survey) => survey.status === 'completed');
+  const completedSurveys = surveys
+    .filter((survey) => survey.status === 'completed')
+    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime());
   const pendingRecordings = recordingRequests.filter((req) => req.status === 'sent');
 
   /**
