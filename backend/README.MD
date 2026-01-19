@@ -126,12 +126,14 @@ From here, you should be able to run the project as normally (on any wifi) and s
 
 1. Make a new file named ".env" in the root of backend folder. 
 
-2. Generate a secret key by typing the command in the terminal below: 
+2. Activate virtual environment.
+
+3. Generate a secret key by typing the command in the terminal below: 
 ```bash
-python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 ```
 
-3. Copy and paste the key and set it equal to SECRET_KEY. Your .env file should have the same format as below
+4. Copy and paste the key and set it equal to SECRET_KEY. Your .env file should have the same format as below
 
 ```bash
 SECRET_KEY=*copy_and_pasted_key*  
