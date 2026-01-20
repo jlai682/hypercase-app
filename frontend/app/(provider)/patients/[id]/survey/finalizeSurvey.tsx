@@ -10,29 +10,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
-import config from '@/config';
-import { useAuth } from '@/components/auth/AuthContext';
 import BackButton from '@/components/ui/BackButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Patient } from '@/types';
+import { Patient, Option, Question } from '@/types';
+import { useCreateSurvey } from '@/hooks/queries';
 
-interface Option {
-  id: number;
-  option: string;
-}
-
-interface Question {
-  id: number;
-  question_description: string;
-}
-
-interface MultipleChoiceQuestion extends Question {
+interface MultipleChoiceQuestionOnlyOptions extends Question {
   options: Option[];
 }
 
 function FinalizeSurvey(): React.JSX.Element {
-  const { authState } = useAuth();
-  const token = authState.token;
   const { selectedMC, selectedOpen, patient } = useLocalSearchParams<{
     selectedMC: string;
     selectedOpen: string;
@@ -41,9 +28,8 @@ function FinalizeSurvey(): React.JSX.Element {
 
   const parsedPatient: Patient | null = patient ? JSON.parse(patient) : null;
   const parsedOpenQuestions: Question[] = selectedOpen ? JSON.parse(selectedOpen) : [];
-  const parsedMCQuestions: MultipleChoiceQuestion[] = selectedMC ? JSON.parse(selectedMC) : [];
+  const parsedMCQuestions: MultipleChoiceQuestionOnlyOptions[] = selectedMC ? JSON.parse(selectedMC) : [];
 
-  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [surveyTitle, setSurveyTitle] = useState<string>(() => {
     const today = format(new Date(), 'MMMM d, yyyy');
@@ -51,55 +37,33 @@ function FinalizeSurvey(): React.JSX.Element {
   });
 
   const router = useRouter();
+  const createSurveyMutation = useCreateSurvey();
 
-  const handleCreateSurvey = async (): Promise<void> => {
-    if (!parsedPatient || !token) {
-      setError('Patient or authentication data is missing');
+  const handleCreateSurvey = (): void => {
+    if (!parsedPatient) {
+      setError('Patient data is missing');
       return;
     }
 
-    console.log('patient: ', patient);
-    console.log('patientId: ', parsedPatient.id);
-    setLoading(true);
-
-    try {
-      const surveyData = {
+    createSurveyMutation.mutate(
+      {
         title: surveyTitle,
-        patient_id: parsedPatient.id,
-        open_question_ids: parsedOpenQuestions.map((q) => q.id),
-        mc_question_ids: parsedMCQuestions.map((q) => q.id),
-      };
-
-      const response = await fetch(
-        `${config.BACKEND_URL}/api/surveyManagement/create_survey/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(surveyData),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // On success, navigate back to patient profile
-        router.push({
-          pathname: `/(provider)/patients/${parsedPatient.id}` as any,
-          params: { email: parsedPatient.email },
-        });
-      } else {
-        // Handle errors from backend
-        setError(data.error || 'Something went wrong');
+        patientId: parsedPatient.id,
+        openQuestionIds: parsedOpenQuestions.map((q) => q.id),
+        mcQuestionIds: parsedMCQuestions.map((q) => q.id),
+      },
+      {
+        onSuccess: () => {
+          router.push({
+            pathname: `/(provider)/patients/${parsedPatient.id}` as any,
+            params: { email: parsedPatient.email },
+          });
+        },
+        onError: (err) => {
+          setError(err.message || 'Something went wrong');
+        },
       }
-    } catch (err) {
-      console.error('Survey creation error:', err);
-      setError('Something went wrong');
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   return (
@@ -137,9 +101,9 @@ function FinalizeSurvey(): React.JSX.Element {
         ))}
 
         <Button
-          title={loading ? 'Creating...' : 'Create Survey'}
+          title={createSurveyMutation.isPending ? 'Creating...' : 'Create Survey'}
           onPress={handleCreateSurvey}
-          disabled={loading}
+          disabled={createSurveyMutation.isPending}
         />
 
         {error && <Text style={styles.error}>{error}</Text>}

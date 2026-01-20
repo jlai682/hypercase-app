@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ScrollView,
   View,
@@ -6,42 +6,31 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '@/components/auth/AuthContext';
-import config from '@/config';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import BackButton from '@/components/ui/BackButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAllQuestions } from '@/hooks/queries';
+import { Option, Question,  } from '@/types';
 
-interface Option {
-  id: number;
-  option: string;
-}
-
-interface Question {
-  id: number;
-  question_description: string;
-}
-
-interface MultipleChoiceQuestion extends Question {
+interface MultipleChoiceQuestionOnlyOptions extends Question {
   options: Option[];
 }
 
 function SelectQuestions(): React.JSX.Element {
-  const { authState } = useAuth();
-  const token = authState.token;
   const { patient } = useLocalSearchParams<{ patient: string }>();
   const parsedPatient = patient ? JSON.parse(patient) : null;
-  const [openQuestions, setOpenQuestions] = useState<Question[]>([]);
-  const [multipleChoiceQuestions, setMultipleChoiceQuestions] = useState<MultipleChoiceQuestion[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
   const router = useRouter();
 
-  const [selectedMC, setSelectedMC] = useState<MultipleChoiceQuestion[]>([]);
-  const [selectedOpen, setSelectedOpen] = useState<Question[]>([]);
+  // Tanstack Query hook
+  const { data: questionsData, isLoading, error } = useAllQuestions();
+  const openQuestions = questionsData?.open_questions || [];
+  const multipleChoiceQuestions = questionsData?.multiple_choice_questions || [];
 
+  const [selectedMC, setSelectedMC] = useState<MultipleChoiceQuestionOnlyOptions[]>([]);
+  const [selectedOpen, setSelectedOpen] = useState<Question[]>([]);
   const [searchText, setSearchText] = useState<string>('');
 
   const filteredOpenQuestions = openQuestions.filter((q) =>
@@ -52,7 +41,7 @@ function SelectQuestions(): React.JSX.Element {
     q.question_description.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const toggleSelect = (type: 'open' | 'mc', question: Question | MultipleChoiceQuestion): void => {
+  const toggleSelect = (type: 'open' | 'mc', question: Question | MultipleChoiceQuestionOnlyOptions): void => {
     if (type === 'open') {
       setSelectedOpen((prev) =>
         prev.some((q) => q.id === question.id)
@@ -63,44 +52,25 @@ function SelectQuestions(): React.JSX.Element {
       setSelectedMC((prev) =>
         prev.some((q) => q.id === question.id)
           ? prev.filter((q) => q.id !== question.id)
-          : [...prev, question as MultipleChoiceQuestion]
+          : [...prev, question as MultipleChoiceQuestionOnlyOptions]
       );
     }
   };
 
-  useEffect(() => {
-    const fetchQuestions = async (): Promise<void> => {
-      if (!token) return;
-
-      try {
-        const response = await fetch(
-          `${config.BACKEND_URL}/api/surveyManagement/get_all_questions/`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = await response.json();
-        if (response.ok) {
-          setOpenQuestions(data.open_questions || []);
-          setMultipleChoiceQuestions(data.multiple_choice_questions || []);
-        } else {
-          setError(data.error || 'Failed to fetch questions');
-        }
-      } catch (error) {
-        console.error('Fetch error:', error);
-        setError('Something went wrong while fetching questions.');
-      }
-    };
-
-    fetchQuestions();
-  }, [token]);
-
   const isNextDisabled = selectedMC.length === 0 && selectedOpen.length === 0;
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#cae7ff' }}>
+        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+          <BackButton />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#041575" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#cae7ff' }}>
@@ -169,7 +139,7 @@ function SelectQuestions(): React.JSX.Element {
           </TouchableOpacity>
         </View>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={styles.error}>{error.message}</Text>}
       </ScrollView>
     </SafeAreaView>
   );

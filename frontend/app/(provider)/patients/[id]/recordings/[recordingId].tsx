@@ -1,52 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useAuth } from '@/components/auth/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import BackButton from '@/components/ui/BackButton';
-import config from '@/config';
-
-interface VoiceAnalytics {
-  status: string;
-  error_message?: string;
-  processing_duration?: number;
-  recording_quality?: string;
-  quality_warnings?: string[];
-  // Jitter
-  jitter_local?: number;
-  jitter_absolute?: number;
-  jitter_rap?: number;
-  jitter_ppq5?: number;
-  jitter_ddp?: number;
-  // Shimmer
-  shimmer_local?: number;
-  shimmer_db?: number;
-  shimmer_apq3?: number;
-  shimmer_apq5?: number;
-  shimmer_apq11?: number;
-  shimmer_dda?: number;
-  // F0
-  f0_mean?: number;
-  f0_min?: number;
-  f0_max?: number;
-  f0_std?: number;
-  f0_voiced_frames?: number;
-  // CPP
-  cpp_mean?: number;
-  // HNR
-  hnr_mean?: number;
-  hnr_min?: number;
-  hnr_max?: number;
-  // LTAS
-  ltas_slope?: number;
-  ltas_tilt?: number;
-  // AVQI
-  avqi_score?: number;
-  avqi_interpretation?: string;
-}
+import { useRecordingsByPatient, useRecordingAnalytics } from '@/hooks/queries';
 
 interface Recording {
   id: number;
@@ -59,88 +19,17 @@ interface Recording {
 
 function RecordingDetail() {
   const params = useLocalSearchParams<{ id: string; recordingId: string }>();
-  const patientId = params.id; // Patient ID from first [id] segment
-  const recordingId = params.recordingId; // Recording ID from [recordingId] segment
-  const { authState } = useAuth();
+  const patientId = params.id;
+  const recordingId = params.recordingId;
   const router = useRouter();
-  const token = authState?.token;
 
-  const [recording, setRecording] = useState<Recording | null>(null);
-  const [analytics, setAnalytics] = useState<VoiceAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Tanstack Query hooks
+  const { data: recordings = [], isLoading: loadingRecordings, error: recordingsError } = useRecordingsByPatient(patientId);
+  const recording = recordings.find((r: Recording) => r.id === parseInt(recordingId || '0')) || null;
+  const { data: analytics } = useRecordingAnalytics(recording ? recordingId : undefined);
 
-  // Poll for analytics status
-  useEffect(() => {
-    // Fetch recording details
-    const fetchRecording = async () => {
-      if (!recordingId || !token || !patientId) return;
-
-      try {
-        const response = await fetch(`${config.BACKEND_URL}/api/recordings/patient/${patientId}/`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch recordings');
-        }
-
-        const data = await response.json();
-        const rec = data.find((r: Recording) => r.id === parseInt(recordingId));
-        if (rec) {
-          setRecording(rec);
-        } else {
-          throw new Error('Recording not found');
-        }
-      } catch (err) {
-        console.error('Error fetching recording:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load recording');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecording()
-  }, [recordingId, token, patientId]);
-
-  useEffect(() => {
-    if (!recording) return;
-
-    // Fetch analytics
-    const fetchAnalytics = async () => {
-      if (!recordingId || !token) return;
-
-      try {
-        const response = await fetch(`${config.BACKEND_URL}/api/recordings/${recordingId}/analytics/`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setAnalytics(data);
-        }
-      } catch (err) {
-        console.error('Error fetching analytics:', err);
-      }
-    };
-
-    fetchAnalytics();
-
-    // Poll every 3 seconds if processing
-    const interval = setInterval(() => {
-      if (recording.analytics_status === 'pending' || recording.analytics_status === 'processing') {
-        fetchAnalytics();
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [recording, recordingId, token]);
+  const loading = loadingRecordings;
+  const error = recordingsError?.message || (!loading && !recording ? 'Recording not found' : null);
 
   const renderMetric = (label: string, value: number | undefined, unit: string = '') => {
     if (value === undefined || value === null) return null;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,32 +9,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 
-import { useAuth } from '@/components/auth/AuthContext';
-import config from '@/config';
 import BackButton from '@/components/ui/BackButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import {
-  Survey,
-  Option,
-  Question,
-} from '@/types';
-
-interface CompletedMultipleChoiceResponse {
-  question: Question;
-  options: Option[];
-  selected_option: string;
-}
-
-interface CompletedOpenResponse {
-  question: Question;
-  response: string;
-}
-
-interface CompletedSurveyData {
-  survey_title: string;
-  multiple_choice_responses: CompletedMultipleChoiceResponse[];
-  open_responses: CompletedOpenResponse[];
-}
+import { Option, Question } from '@/types';
+import { useSurveysByPatient, useSurveyQuestions } from '@/hooks/queries';
 
 interface CombinedResponse {
   question: Question;
@@ -44,75 +22,15 @@ interface CombinedResponse {
 }
 
 function CompletedSurveyView(): React.JSX.Element {
-  const { authState } = useAuth();
-  const token = authState?.token;
   const params = useLocalSearchParams();
   const surveyId = params.id as string;
   const patientId = params.patientId as string;
 
-  const [surveyData, setSurveyData] = useState<CompletedSurveyData | null>(null);
-  const [survey, setSurvey] = useState<Survey | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchSurveyData = async (): Promise<void> => {
-      if (!token || !surveyId) {
-        setError('Missing authentication or survey ID');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch survey metadata using patient ID (same approach as patient view)
-        if (patientId) {
-          const surveyResponse = await fetch(
-            `${config.BACKEND_URL}/api/surveyManagement/get_surveys/${patientId}/`,
-            {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (surveyResponse.ok) {
-            const surveys: Survey[] = await surveyResponse.json();
-            const currentSurvey = surveys.find(s => s.id.toString() === surveyId);
-            if (currentSurvey) {
-              setSurvey(currentSurvey);
-            }
-          }
-        }
-
-        // Fetch survey questions and responses
-        const response = await fetch(
-          `${config.BACKEND_URL}/api/surveyManagement/survey_questions/${surveyId}/`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Survey not found');
-        }
-
-        const data: CompletedSurveyData = await response.json();
-        setSurveyData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch survey');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSurveyData();
-  }, [surveyId, patientId, token]);
+  // Tanstack Query hooks
+  const { data: surveys = [] } = useSurveysByPatient(patientId);
+  const survey = surveys.find(s => s.id.toString() === surveyId) || null;
+  const { data: surveyData, isLoading: loading, error: queryError } = useSurveyQuestions(surveyId);
+  const error = queryError?.message || null;
 
   const formatDate = (dateString?: string): string => {
     if (!dateString) return 'N/A';

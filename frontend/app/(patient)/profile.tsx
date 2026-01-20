@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from "@/components/auth/AuthContext";
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Patient } from '@/types';
-
-import config from "@/config";
+import { usePatientProfile } from '@/hooks/queries';
 
 
 interface SectionItemProps {
@@ -42,38 +40,9 @@ const Section: React.FC<SectionProps> = ({ title, children }) => {
 };
 
 function ProfileScreen(): React.JSX.Element | null {
-  const { authState, onLogout } = useAuth();
-  const token = authState?.token;
+  const { onLogout } = useAuth();
 
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchPatientProfile = async (): Promise<void> => {
-      if (!token) return;
-      
-      try {
-        const response = await fetch(`${config.BACKEND_URL}/api/patientManagement/profile/`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch patient data');
-
-        const patientData: Patient = await response.json();
-        setPatient(patientData);
-      } catch (error) {
-        console.error('Error fetching patient profile:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPatientProfile();
-  }, [token]);
+  const { data: patient, isLoading: loading } = usePatientProfile();
 
   if (loading) {
     return (
