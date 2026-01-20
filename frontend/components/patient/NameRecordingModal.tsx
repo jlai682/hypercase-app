@@ -215,6 +215,12 @@ const NameRecordingModal: React.FC<NameRecordingModalProps> = ({
       const serverId = await uploadRecordingToServer(recordingUri, recordingName.trim());
 
       if (serverId) {
+        // Invalidate recordings cache so the new recording shows up immediately
+        if (patient?.id) {
+          queryClient.invalidateQueries({ queryKey: ['recordings', 'byPatient', patient.id] });
+          queryClient.invalidateQueries({ queryKey: ['patient', 'recordings', patient.id] });
+        }
+
         // Handle request completion if we have a request
         if (request?.id) {
           console.log("Completing recording request");

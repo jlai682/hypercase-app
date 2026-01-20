@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,104 +8,33 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 
 import config from '@/config';
-import { useAuth } from '@/components/auth/AuthContext';
+import { useRecordingsByPatient } from '@/hooks/queries';
 
 
 const PreviousRecordings = ({ patient }) => {
-  const [recordings, setRecordings] = useState([]);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { authState, isTokenExpired } = useAuth();
-  const token = authState.token;
+  const router = useRouter();
 
-  const router = useRouter(); 
-
-  // Parse patient ID properly
   const getPatientId = () => {
     if (!patient) return null;
-    
+
     try {
-      // If patient is a JSON string, parse it and get the ID
       const parsedPatient = JSON.parse(patient);
       return parsedPatient.id;
-    } catch (error) {
-      // If it's already a number/string, use it directly
-      console.log(error)
+    } catch {
       return parseInt(patient);
     }
   };
 
   const patientId = getPatientId();
 
-  console.log("🔍 PreviousRecordings Debug:");
-  console.log("- Raw patient prop:", patient);
-  console.log("- Parsed patientId:", patientId);
-  console.log("- Token exists:", !!token);
-
-  useFocusEffect(
-    useCallback(() => {
-      const fetchData = async () => {
-
-        if (!token || isTokenExpired(token)) {
-          console.log("❌ Token invalid or expired");
-          setError("Authentication required");
-          setLoading(false);
-          return;
-        }
-
-        if (!patientId) {
-          console.log("❌ No patient ID available");
-          setError("No patient selected");
-          setLoading(false);
-          return;
-        }
-
-        try {
-          setLoading(true);
-          setError(null);
-
-          const endpoint = `/api/recordings/patient/${patientId}/`;
-          console.log(`🔄 Fetching from endpoint: ${config.BACKEND_URL}${endpoint}`);
-
-          const response = await fetch(`${config.BACKEND_URL}${endpoint}`, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          console.log(`📡 Response status:`, response.status);
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`✅ Success:`, data);
-            setRecordings(data);
-          } else {
-            const errorText = await response.text();
-            console.log(`❌ Error ${response.status}:`, errorText);
-            setError(`Failed to fetch recordings: ${response.status}`);
-            setRecordings([]);
-          }
-
-        } catch (e) {
-          console.error('❌ Error fetching patient recordings:', e);
-          setError(e.message);
-          setRecordings([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchData();
-    }, [token, patientId, isTokenExpired])
-  );
+  const { data: recordings = [], isLoading: loading, error: queryError } = useRecordingsByPatient(patientId);
+  const error = queryError?.message || null;
 
   const playRecording = async (uri, recordingId) => {
     try {
@@ -290,7 +219,6 @@ const PreviousRecordings = ({ patient }) => {
         <Text style={styles.header}>Previous Recordings</Text>
         <Text style={styles.errorText}>Error: {error}</Text>
         <Text style={styles.debugText}>Patient ID: {patientId}</Text>
-        <Text style={styles.debugText}>Token: {token ? "Present" : "Missing"}</Text>
       </View>
     );
   }
