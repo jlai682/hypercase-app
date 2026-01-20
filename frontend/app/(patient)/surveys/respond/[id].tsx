@@ -68,7 +68,7 @@ function SurveyResponder(): React.JSX.Element {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // React Query hooks
+  // Tanstack Query hooks
   const { data: surveyData, isLoading: loading, error: queryError } = useSurveyQuestions(id);
   const submitMutation = useSubmitSurvey();
 

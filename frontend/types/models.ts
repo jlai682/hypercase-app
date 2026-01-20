@@ -31,6 +31,7 @@ export interface Recording {
   file_url: string;
   created_at: string;
   patient_id?: string | number;
+  analytics_status?: string;
 }
 
 export interface RecordingRequest {

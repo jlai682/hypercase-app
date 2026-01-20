@@ -9,7 +9,7 @@ import { usePatientProfile, useRecordingRequests } from '@/hooks/queries';
 
 
 function RecordScreen(): React.JSX.Element {
-    // React Query hooks
+    // Tanstack Query hooks
     const { data: patient } = usePatientProfile();
     const { data: recordingRequests = [] } = useRecordingRequests();
 

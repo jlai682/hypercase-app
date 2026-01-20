@@ -10,7 +10,7 @@ import { Survey } from '@/types';
 function SurveysScreen() {
   const router = useRouter();
 
-  // React Query hook with pull-to-refresh support
+  // Tanstack Query hook with pull-to-refresh support
   const { data: surveys = [], isLoading: loading, refetch, isRefetching } = usePatientSurveys();
 
   const handleSurveyPress = (survey: Survey): void => {

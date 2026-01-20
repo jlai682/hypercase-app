@@ -13,7 +13,7 @@ function HomeScreen() {
   const { onLogout } = useAuth();
   const router = useRouter();
 
-  // React Query hooks - fetches run in parallel automatically
+  // Tanstack Query hooks - fetches run in parallel automatically
   const { data: patient, isLoading: loadingPatient } = usePatientProfile();
   const { data: surveys = [], isLoading: loadingSurveys } = usePatientSurveys();
   const { data: provider, isLoading: loadingProvider } = usePatientProvider();

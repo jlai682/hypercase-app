@@ -22,8 +22,9 @@ export interface PreviousRecordingsProps {
 }
 
 export interface RecordButtonProps {
-  onRecordingComplete?: (uri: string) => void;
-  requestId?: string | number;
+  isRecording: boolean;
+  stopRecording: () => void | Promise<void>;
+  startRecording: () => void | Promise<void>;
 }
 
 export interface NameRecordingModalProps {
@@ -49,18 +50,4 @@ export interface SurveyDisplayProps {
 export interface AuthState {
   token: string | null;
   authenticated: boolean | null;
-}
-
-export interface AuthProps {
-  authState: AuthState;
-  onRegister: (
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    signupType: string,
-    age?: string
-  ) => Promise<any>;
-  onLogin: (email: string, password: string, loginType: string) => Promise<any>;
-  onLogout: () => Promise<any>;
 }

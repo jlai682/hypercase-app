@@ -1,10 +1,7 @@
 import React from 'react';
 import { useAuth } from '../auth/AuthContext';
 import LoggedOutView from '../LoggedOutView'
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
+import { ProtectedRouteProps } from '@/types';
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps): React.JSX.Element {
   const { isAuthenticated } = useAuth();

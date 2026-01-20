@@ -1,11 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { Href, router } from 'expo-router';
-
-// Define the props type
-type BackButtonProps = {
-  route?: string;
-};
+import { BackButtonProps } from '@/types';
 
 const BackButton = ({ route }: BackButtonProps) => {
   const handlePress = () => {

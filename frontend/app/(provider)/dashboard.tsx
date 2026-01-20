@@ -18,7 +18,7 @@ function ProviderDashScreen(): React.JSX.Element {
   const { onLogout } = useAuth();
   const router = useRouter();
 
-  // React Query hooks
+  // Tanstack Query hooks
   const { data: provider } = useProviderProfile();
   const { data: connectedPatients = [] } = useConnectedPatients();
   const searchMutation = useSearchPatient();

@@ -7,15 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import BackButton from '@/components/ui/BackButton';
 import { useRecordingsByPatient, useRecordingAnalytics } from '@/hooks/queries';
-
-interface Recording {
-  id: number;
-  title: string;
-  description?: string;
-  file_url: string;
-  created_at: string;
-  analytics_status?: string;
-}
+import { Recording } from '@/types';
 
 function RecordingDetail() {
   const params = useLocalSearchParams<{ id: string; recordingId: string }>();

@@ -7,12 +7,7 @@ import {
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-
-interface RecordButtonProps {
-    isRecording: boolean;
-    stopRecording: () => void | Promise<void>;
-    startRecording: () => void | Promise<void>;
-}
+import { RecordButtonProps } from '@/types';
 
 const RecordButton: React.FC<RecordButtonProps> = ({ 
     isRecording, 

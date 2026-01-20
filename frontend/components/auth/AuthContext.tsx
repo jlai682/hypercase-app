@@ -222,7 +222,7 @@ export const AuthProvider = ({ children }) => {
 
 
     const onLogout = async () => {
-        // Clear React Query cache
+        // Clear Tanstack Query cache
         queryClient.clear();
 
         if (Platform.OS === 'web') {
