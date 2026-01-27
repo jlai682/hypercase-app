@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   Alert,
   Platform,
+  TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from "@/components/auth/AuthContext";
-import RecordButton from '@/components/patient/recordButton';
 import NameRecordingModal from '@/components/patient/NameRecordingModal';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import BackButton from '@/components/ui/BackButton';
 
 import { useLocalSearchParams } from 'expo-router';
 import { Patient, RecordingRequest } from '@/types';
@@ -32,6 +35,11 @@ function AudioRecorder(): React.JSX.Element {
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
 
+  // Refs to track current state for cleanup
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+
   const params = useLocalSearchParams();
 
   // Parse patient from URL params
@@ -40,11 +48,9 @@ function AudioRecorder(): React.JSX.Element {
     if (!patientParam) return null;
 
     try {
-      // If it's a JSON string, parse it
       const parsed = JSON.parse(patientParam);
       return parsed as Patient;
     } catch (error) {
-      // If parsing fails, treat it as a patient ID
       console.log('Failed to parse patient param:', error);
       return {
         id: patientParam,
@@ -72,9 +78,6 @@ function AudioRecorder(): React.JSX.Element {
   const patient = parsePatient();
   const request = parseRequest();
 
-  console.log("Parsed patient:", patient);
-  console.log("Parsed request:", request);
-
   // Debug token payload only when token exists
   useEffect(() => {
     if (token && isValidJWT(token)) {
@@ -87,6 +90,20 @@ function AudioRecorder(): React.JSX.Element {
     }
   }, [token, isValidJWT]);
 
+  // Keep refs in sync with state
+  useEffect(() => {
+    recordingRef.current = recording;
+  }, [recording]);
+
+  useEffect(() => {
+    mediaRecorderRef.current = mediaRecorder;
+  }, [mediaRecorder]);
+
+  useEffect(() => {
+    audioStreamRef.current = audioStream;
+  }, [audioStream]);
+
+  // Timer interval effect
   useEffect(() => {
     let interval: NodeJS.Timeout | number | undefined;
 
@@ -98,43 +115,44 @@ function AudioRecorder(): React.JSX.Element {
 
     return () => {
       if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
 
-      // Safely cleanup recording objects
+  // Cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      // Cleanup recording objects on component unmount
       if (Platform.OS === 'web') {
-        if (audioStream) {
-          // Stop all audio tracks
-          audioStream.getTracks().forEach(track => track.stop());
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
         }
 
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
           try {
-            mediaRecorder.stop();
+            mediaRecorderRef.current.stop();
           } catch (error) {
             console.log('Error stopping media recorder:', error);
           }
         }
       } else {
-        if (recording) {
-          // Handle promise rejection since we can't use async/await in cleanup
-          recording.stopAndUnloadAsync().catch(error => {
+        if (recordingRef.current) {
+          recordingRef.current.stopAndUnloadAsync().catch(error => {
             console.log('Error cleaning up recording:', error);
           });
         }
       }
-
     };
-  }, [isRecording, audioStream, mediaRecorder, recording]);
+  }, []);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const startRecording = async (): Promise<void> => {
     try {
       if (Platform.OS === 'web') {
-        // Web implementation using MediaRecorder API
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           setAudioStream(stream);
@@ -149,6 +167,8 @@ function AudioRecorder(): React.JSX.Element {
           };
 
           recorder.start();
+          mediaRecorderRef.current = recorder;
+          audioStreamRef.current = stream;
           setMediaRecorder(recorder);
           setAudioChunks(chunks);
           setIsRecording(true);
@@ -158,7 +178,6 @@ function AudioRecorder(): React.JSX.Element {
           Alert.alert('Permission Error', 'Please allow microphone access to record.');
         }
       } else {
-        // Native implementation
         const permission = await Audio.requestPermissionsAsync();
         if (!permission.granted) {
           Alert.alert('Permission required', 'Please grant microphone access to record.');
@@ -196,6 +215,7 @@ function AudioRecorder(): React.JSX.Element {
           },
         });
 
+        recordingRef.current = newRecording;
         setRecording(newRecording);
         setIsRecording(true);
         setRecordingDuration(0);
@@ -209,22 +229,24 @@ function AudioRecorder(): React.JSX.Element {
   const stopRecording = async (): Promise<void> => {
     try {
       if (Platform.OS === 'web') {
-        // Web implementation
-        if (!mediaRecorder) return;
+        const currentMediaRecorder = mediaRecorderRef.current;
+        const currentAudioStream = audioStreamRef.current;
 
-        // Create a promise that resolves when the recording is stopped
+        if (!currentMediaRecorder || currentMediaRecorder.state === 'inactive') {
+          console.log('No active media recorder to stop');
+          return;
+        }
+
         const stopPromise = new Promise<void>(resolve => {
-          mediaRecorder.onstop = () => {
-            // Create a blob from the chunks
+          currentMediaRecorder.onstop = () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
 
-            // Stop all tracks
-            if (audioStream) {
-              audioStream.getTracks().forEach(track => track.stop());
-              setAudioStream(null);
+            if (currentAudioStream) {
+              currentAudioStream.getTracks().forEach(track => track.stop());
             }
 
-            setTempRecordingUri(audioBlob); // Store the blob directly for web
+            setTempRecordingUri(audioBlob);
+            setAudioStream(null);
             setMediaRecorder(null);
             setAudioChunks([]);
             setIsRecording(false);
@@ -232,40 +254,47 @@ function AudioRecorder(): React.JSX.Element {
           };
         });
 
-        // Stop the media recorder
-        mediaRecorder.stop();
-
-        // Wait for the recording to stop
+        currentMediaRecorder.stop();
         await stopPromise;
-
         setShowNameModal(true);
       } else {
-        // Native implementation
-        if (!recording) return;
+        const currentRecording = recordingRef.current;
 
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        setTempRecordingUri(uri);
+        if (!currentRecording) {
+          console.log('No active recording to stop');
+          return;
+        }
+
+        // Clear refs first to prevent double-unload from cleanup
+        recordingRef.current = null;
         setRecording(null);
         setIsRecording(false);
+
+        // Stop and unload the recording
+        await currentRecording.stopAndUnloadAsync();
+
+        // Get URI after stopping
+        const uri = currentRecording.getURI();
+        setTempRecordingUri(uri);
         setShowNameModal(true);
       }
     } catch (err) {
       console.error('Failed to stop recording:', err);
+      // Reset state on error
+      setRecording(null);
+      recordingRef.current = null;
+      setIsRecording(false);
       Alert.alert('Error', 'Could not save recording');
     }
   };
 
-  // Callback for when modal saves successfully
   const handleSave = async (recordingName: string): Promise<void> => {
     console.log('Recording saved with name:', recordingName);
-    // Clean up state
     setShowNameModal(false);
     setTempRecordingUri(null);
     setRecordingDuration(0);
   };
 
-  // Callback for when modal is cancelled
   const handleCancel = (): void => {
     console.log('Recording cancelled');
     setShowNameModal(false);
@@ -275,29 +304,117 @@ function AudioRecorder(): React.JSX.Element {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.mainContent}>
-        {/* Timer Display */}
-        <Text style={styles.timer}>
-          {formatTime(recordingDuration)}
-        </Text>
-
-        {/* Record Button */}
-        <RecordButton
-          isRecording={isRecording}
-          startRecording={startRecording}
-          stopRecording={stopRecording}
-        />
-
-        {/* Name Recording Modal */}
-        <NameRecordingModal
-          visible={showNameModal}
-          recordingUri={tempRecordingUri}
-          patient={patient}
-          request={request}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
+      {/* Header */}
+      <View style={styles.header}>
+        <BackButton route="/(patient)/recordings" />
+        <Text style={styles.headerTitle}>Record Audio</Text>
+        <View style={{ width: 40 }} />
       </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Request Info Card */}
+        {request && (
+          <View style={styles.requestCard}>
+            <View style={styles.requestIconContainer}>
+              <Ionicons name="document-text" size={24} color="#041575" />
+            </View>
+            <View style={styles.requestInfo}>
+              <Text style={styles.requestTitle}>{request.title}</Text>
+              {request.description && (
+                <Text style={styles.requestDescription} numberOfLines={2}>
+                  {request.description}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Main Recording Area */}
+        <View style={styles.mainContent}>
+          {/* Waveform Visualization Placeholder */}
+          <View style={styles.waveformContainer}>
+            <View style={styles.waveformPlaceholder}>
+              {isRecording ? (
+                <View style={styles.waveformBars}>
+                  {[...Array(12)].map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.waveformBar,
+                        { height: 20 + Math.sin(i * 0.8) * 15 + (isRecording ? Math.random() * 20 : 0) }
+                      ]}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Ionicons name="pulse" size={40} color="#BDC3C7" />
+              )}
+            </View>
+          </View>
+
+          {/* Timer Display */}
+          <View style={styles.timerContainer}>
+            <Text style={[styles.timer, isRecording && styles.timerRecording]}>
+              {formatTime(recordingDuration)}
+            </Text>
+            <Text style={styles.timerLabel}>
+              {isRecording ? 'Recording in progress' : 'Ready to record'}
+            </Text>
+          </View>
+
+          {/* Record Button */}
+          <View style={styles.recordButtonWrapper}>
+            <TouchableOpacity
+              onPress={isRecording ? stopRecording : startRecording}
+              style={[styles.recordButton, isRecording && styles.recordButtonActive]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.recordButtonInner, isRecording && styles.recordButtonInnerActive]}>
+                {isRecording ? (
+                  <Ionicons name="stop" size={36} color="#fff" />
+                ) : (
+                  <Ionicons name="mic" size={36} color="#fff" />
+                )}
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.recordButtonLabel}>
+              {isRecording ? 'Tap to stop' : 'Tap to start recording'}
+            </Text>
+          </View>
+
+          {/* Instructions */}
+          <View style={styles.instructionsContainer}>
+            <View style={styles.instructionItem}>
+              <View style={styles.instructionIcon}>
+                <Ionicons name="volume-high" size={18} color="#041575" />
+              </View>
+              <Text style={styles.instructionText}>Speak clearly into your device</Text>
+            </View>
+            <View style={styles.instructionItem}>
+              <View style={styles.instructionIcon}>
+                <Ionicons name="ban" size={18} color="#041575" />
+              </View>
+              <Text style={styles.instructionText}>Avoid background noise</Text>
+            </View>
+            <View style={styles.instructionItem}>
+              <View style={styles.instructionIcon}>
+                <Ionicons name="time" size={18} color="#041575" />
+              </View>
+              <Text style={styles.instructionText}>Record for at least 10 seconds</Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Name Recording Modal */}
+      <NameRecordingModal
+        visible={showNameModal}
+        recordingUri={tempRecordingUri}
+        patient={patient}
+        request={request}
+        onSave={handleSave}
+        onCancel={handleCancel}
+      />
     </SafeAreaView>
   );
 }
@@ -305,68 +422,181 @@ function AudioRecorder(): React.JSX.Element {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#cae7ff',
   },
-  mainContent: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  timer: {
-    fontSize: 60,
-    fontWeight: '300',
-    textAlign: 'center',
-    color: '#4A90E2',
-    marginBottom: 30,
-    marginTop: 20,
-  },
-  previousRecordings: {
-    flex: 1,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 15,
-    color: '#2D3748',
-  },
-  recordingItem: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  playButton: {
-    padding: 8,
-    marginRight: 12,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
   },
-  recordingInfo: {
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+  requestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  requestIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  requestInfo: {
     flex: 1,
   },
-  recordingName: {
+  requestTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#2D3748',
+    fontWeight: '600',
+    color: '#041575',
+    marginBottom: 4,
+    fontFamily: 'Figtree_400Regular',
   },
-  uploadedTag: {
-    fontSize: 12,
-    color: '#38A169',
-    fontStyle: 'italic',
+  requestDescription: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    fontFamily: 'Figtree_400Regular',
   },
-  recordingDate: {
-    fontSize: 12,
-    color: '#718096',
-    marginTop: 4,
+  mainContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    alignItems: 'center',
   },
-  deleteButton: {
-    padding: 8,
+  waveformContainer: {
+    width: '100%',
+    height: 100,
+    marginBottom: 24,
   },
-  noRecordings: {
-    textAlign: 'center',
-    color: '#718096',
-    marginTop: 20,
+  waveformPlaceholder: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  waveformBars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  waveformBar: {
+    width: 6,
+    backgroundColor: '#3B82F6',
+    borderRadius: 3,
+  },
+  timerContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  timer: {
+    fontSize: 64,
+    fontWeight: '200',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
+    letterSpacing: 2,
+  },
+  timerRecording: {
+    color: '#E74C3C',
+  },
+  timerLabel: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginTop: 8,
+    fontFamily: 'Figtree_400Regular',
+  },
+  recordButtonWrapper: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  recordButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(4, 21, 117, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  recordButtonActive: {
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+  },
+  recordButtonInner: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#041575',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#041575',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  recordButtonInnerActive: {
+    backgroundColor: '#E74C3C',
+    shadowColor: '#E74C3C',
+  },
+  recordButtonLabel: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    fontFamily: 'Figtree_400Regular',
+  },
+  instructionsContainer: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  instructionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#4A5568',
+    fontFamily: 'Figtree_400Regular',
   },
 });
 

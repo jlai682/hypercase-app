@@ -75,7 +75,7 @@ function ProfileScreen(): React.JSX.Element {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarContainer}>
@@ -105,7 +105,7 @@ function ProfileScreen(): React.JSX.Element {
               iconColor="#041575"
               iconBgColor="#EEF2FF"
               title="Medical History"
-              onPress={() => router.push('/(patient)/medical-history' as any)}
+              onPress={() => router.push('/(patient)/profile/medical-history' as any)}
             />
             <View style={styles.menuDivider} />
             <MenuItem
@@ -113,7 +113,7 @@ function ProfileScreen(): React.JSX.Element {
               iconColor="#27AE60"
               iconBgColor="#E8F8F0"
               title="Physicians"
-              onPress={() => router.push('/(patient)/physicians' as any)}
+              onPress={() => router.push('/(patient)/profile/physicians' as any)}
             />
           </View>
         </View>
@@ -127,7 +127,7 @@ function ProfileScreen(): React.JSX.Element {
               iconColor="#041575"
               iconBgColor="#EEF2FF"
               title="Terms & Conditions"
-              onPress={() => router.push('/(patient)/terms' as any)}
+              onPress={() => router.push('/(patient)/profile/terms' as any)}
             />
             <View style={styles.menuDivider} />
             <MenuItem
@@ -135,7 +135,7 @@ function ProfileScreen(): React.JSX.Element {
               iconColor="#041575"
               iconBgColor="#EEF2FF"
               title="Consent Form"
-              onPress={() => router.push('/(patient)/consent-view' as any)}
+              onPress={() => router.push('/(patient)/profile/consent-view' as any)}
             />
             <View style={styles.menuDivider} />
             <MenuItem
@@ -195,24 +195,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#E74C3C',
     fontFamily: 'Figtree_400Regular',
-  },
-  themeToggleContainer: {
-    alignItems: 'flex-end',
-    paddingTop: 10,
-    marginBottom: 10,
-  },
-  themeToggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   avatarSection: {
     alignItems: 'center',

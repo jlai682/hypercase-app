@@ -159,7 +159,11 @@ function SurveyResponder(): React.JSX.Element {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <BackButton route='/(patient)/surveys'/>
+        <View style={styles.header}>
+          <BackButton route='/(patient)/surveys'/>
+          <Text style={styles.headerTitle}>Survey</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#041575" />
         </View>
@@ -170,7 +174,11 @@ function SurveyResponder(): React.JSX.Element {
   if (error) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <BackButton route='/(patient)/surveys'/>
+        <View style={styles.header}>
+          <BackButton route='/(patient)/surveys'/>
+          <Text style={styles.headerTitle}>Survey</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Error: {error}</Text>
         </View>
@@ -181,7 +189,11 @@ function SurveyResponder(): React.JSX.Element {
   if (!surveyData) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <BackButton route='/(patient)/surveys'/>
+        <View style={styles.header}>
+          <BackButton route='/(patient)/surveys'/>
+          <Text style={styles.headerTitle}>Survey</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.emptyContainer}>
           <Text>No survey data available</Text>
         </View>
@@ -196,8 +208,10 @@ function SurveyResponder(): React.JSX.Element {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <SafeAreaView style={styles.safeArea}>
-        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10 }}>
+        <View style={styles.header}>
           <BackButton route='/(patient)/surveys'/>
+          <Text style={styles.headerTitle}>Survey</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -286,6 +300,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#cae7ff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
   },
   scrollContainer: {
     padding: 15,

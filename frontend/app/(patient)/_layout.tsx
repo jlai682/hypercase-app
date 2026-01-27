@@ -6,14 +6,14 @@ export default function PatientLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,  
-        tabBarActiveTintColor: '#041575',  
-        tabBarInactiveTintColor: '#8E8E93',  
+        headerShown: false,
+        tabBarActiveTintColor: '#041575',
+        tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E5EA',
-          height: Platform.OS === 'ios' ? 88 : 60, 
+          height: Platform.OS === 'ios' ? 88 : 60,
           paddingBottom: Platform.OS === 'ios' ? 20 : 8,
         },
         tabBarLabelStyle: {
@@ -57,7 +57,7 @@ export default function PatientLayout() {
 
       {/* Profile Tab */}
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
@@ -76,19 +76,19 @@ export default function PatientLayout() {
       <Tabs.Screen
         name="recordings/record"
         options={{
-          href: null, 
+          href: null,
         }}
       />
       <Tabs.Screen
         name="recordings/[id]"
         options={{
-          href: null, 
+          href: null,
         }}
       />
       <Tabs.Screen
         name="surveys/respond/[id]"
         options={{
-          href: null, 
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -98,25 +98,25 @@ export default function PatientLayout() {
         }}
       />
       <Tabs.Screen
-        name="terms"
+        name="profile/terms"
         options={{
           href: null,
         }}
       />
       <Tabs.Screen
-        name="consent-view"
+        name="profile/consent-view"
         options={{
           href: null,
         }}
       />
       <Tabs.Screen
-        name="physicians"
+        name="profile/physicians"
         options={{
           href: null,
         }}
       />
       <Tabs.Screen
-        name="medical-history"
+        name="profile/medical-history"
         options={{
           href: null,
         }}
