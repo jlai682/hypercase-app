@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text, Pressable, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from "@/components/auth/AuthContext";
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -79,6 +80,7 @@ function ProviderDashScreen(): React.JSX.Element {
   const searchedPatient = searchMutation.data?.patient;
   const searchError = searchMutation.error?.message;
   const providerLastName = provider?.lastName || '';
+  const displayedPatients = connectedPatients.slice(0, 2); // Show only first 2 on dashboard
 
   return (
     <KeyboardAvoidingView
@@ -89,30 +91,54 @@ function ProviderDashScreen(): React.JSX.Element {
       <SafeAreaView style={styles.mainContainer}>
         <ScrollView contentContainerStyle={styles.content}>
           {/* Header */}
-          <Text style={styles.title}>Welcome back,</Text>
-          <Text style={styles.doctorName}>
-            Dr. {providerLastName}
-          </Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.welcomeText}>Welcome back,</Text>
+              <Text style={styles.doctorName}>Dr. {providerLastName}</Text>
+              <View style={styles.underline} />
+            </View>
+          </View>
 
-          <View style={styles.horizontalLine} />
+          {/* Your Patients Section */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Patients</Text>
+            <Text style={styles.totalCount}>{connectedPatients.length} Total</Text>
+          </View>
 
-          {/* Connected Patients Section */}
-          <Text style={styles.sectionTitle}>Your Patients</Text>
           {connectedPatients.length > 0 ? (
-            connectedPatients.map((connection, index) => (
-              <Pressable
-                key={`patient-${connection.patient.id}-${index}`}
-                style={styles.patientCard}
-                onPress={() => navigateToPatientProfile(connection.patient)}
-              >
-                <Text style={styles.patientName}>
-                  {connection.patient.firstName} {connection.patient.lastName}
-                </Text>
-                <Text style={styles.patientEmail}>
-                  {connection.patient.email}
-                </Text>
-              </Pressable>
-            ))
+            <>
+              {displayedPatients.map((connection, index) => {
+                return (
+                  <Pressable
+                    key={`patient-${connection.patient.id}-${index}`}
+                    style={styles.patientCard}
+                    onPress={() => navigateToPatientProfile(connection.patient)}
+                  >
+                    <View style={styles.patientCardContent}>
+                      <View style={styles.avatarContainer}>
+                        <Ionicons name="person-outline" size={24} color="#7F8C8D" />
+                      </View>
+                      <View style={styles.patientInfo}>
+                        <Text style={styles.patientName}>
+                          {connection.patient.firstName} {connection.patient.lastName}
+                        </Text>
+                        <Text style={styles.patientEmail}>
+                          {connection.patient.email}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
+                    </View>
+                  </Pressable>
+                );
+              })}
+
+              {connectedPatients.length > 2 && (
+                <Pressable style={styles.viewAllButton} onPress={() => router.push('/(provider)/patients' as any)}>
+                  <Text style={styles.viewAllText}>View All Patients</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#041575" />
+                </Pressable>
+              )}
+            </>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>
@@ -124,21 +150,22 @@ function ProviderDashScreen(): React.JSX.Element {
             </View>
           )}
 
-          <View style={styles.horizontalLine} />
-
           {/* Patient Search Section */}
-          <View style={styles.searchContainer}>
-            <Text style={styles.sectionTitle}>Search for Patients</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Enter patient email address"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!searchMutation.isPending}
-            />
+          <View style={styles.searchCard}>
+            <Text style={styles.searchTitle}>Search for Patients</Text>
+            <View style={styles.searchInputContainer}>
+              <Ionicons name="search-outline" size={20} color="#999" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Enter patient email address"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!searchMutation.isPending}
+              />
+            </View>
             <Pressable
               style={[
                 styles.searchButton,
@@ -147,8 +174,8 @@ function ProviderDashScreen(): React.JSX.Element {
               onPress={handleSearch}
               disabled={searchMutation.isPending}
             >
-              <Text style={styles.buttonText}>
-                {searchMutation.isPending ? 'Searching...' : 'Search'}
+              <Text style={styles.searchButtonText}>
+                {searchMutation.isPending ? 'Searching...' : 'Search Patient'}
               </Text>
             </Pressable>
           </View>
@@ -165,25 +192,22 @@ function ProviderDashScreen(): React.JSX.Element {
             <View style={styles.searchResultsContainer}>
               <Text style={styles.searchResultsTitle}>Search Results</Text>
               <View style={styles.patientCard}>
-                <Text style={styles.searchResultLabel}>Name:</Text>
-                <Text style={styles.searchResultValue}>
-                  {searchedPatient.firstName} {searchedPatient.lastName}
-                </Text>
-
-                <Text style={styles.searchResultLabel}>Email:</Text>
-                <Text style={styles.searchResultValue}>
-                  {searchedPatient.email}
-                </Text>
-
-                {searchedPatient.age && (
-                  <>
-                    <Text style={styles.searchResultLabel}>Age:</Text>
-                    <Text style={styles.searchResultValue}>
-                      {searchedPatient.age}
+                <View style={styles.patientCardContent}>
+                  <View style={styles.avatarContainer}>
+                    <Ionicons name="person-outline" size={24} color="#7F8C8D" />
+                  </View>
+                  <View style={styles.patientInfo}>
+                    <Text style={styles.patientName}>
+                      {searchedPatient.firstName} {searchedPatient.lastName}
                     </Text>
-                  </>
-                )}
-
+                    <Text style={styles.patientEmail}>
+                      {searchedPatient.email}
+                    </Text>
+                    {searchedPatient.age && (
+                      <Text style={styles.patientAge}>Age: {searchedPatient.age}</Text>
+                    )}
+                  </View>
+                </View>
                 <Pressable
                   style={[
                     styles.connectButton,
@@ -192,7 +216,7 @@ function ProviderDashScreen(): React.JSX.Element {
                   onPress={handleConnect}
                   disabled={connectMutation.isPending}
                 >
-                  <Text style={styles.buttonText}>
+                  <Text style={styles.searchButtonText}>
                     {connectMutation.isPending ? 'Connecting...' : 'Connect to Patient'}
                   </Text>
                 </Pressable>
@@ -202,7 +226,8 @@ function ProviderDashScreen(): React.JSX.Element {
 
           {/* Logout Button */}
           <Pressable style={styles.logoutButton} onPress={onLogout}>
-            <Text style={styles.buttonText}>Log Out</Text>
+            <Ionicons name="log-out-outline" size={20} color="#666" />
+            <Text style={styles.logoutText}>Log Out</Text>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -217,68 +242,139 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    alignItems: 'stretch',
-    width: '100%',
     padding: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#041575',
-    marginTop: 10,
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 25,
+  },
+  welcomeText: {
+    fontSize: 18,
+    color: '#555',
     fontFamily: 'Figtree_400Regular',
   },
   doctorName: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '700',
     color: '#041575',
-    marginBottom: 20,
     fontFamily: 'Figtree_400Regular',
-    marginTop: 20,
-    paddingTop: 10,
+    marginTop: 4,
   },
-  horizontalLine: {
-    height: 2,
-    backgroundColor: '#87CFE9',
-    marginVertical: 15,
-    borderRadius: 5,
+  underline: {
+    width: 50,
+    height: 3,
+    backgroundColor: '#041575',
+    borderRadius: 2,
+    marginTop: 8,
+  },
+  themeToggle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#041575',
-    marginBottom: 10,
-    fontFamily: 'Figtree_400Bold',
+    fontFamily: 'Figtree_400Regular',
+  },
+  totalCount: {
+    fontSize: 14,
+    color: '#555',
+    fontFamily: 'Figtree_400Regular',
   },
   patientCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
+  },
+  patientCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  patientInfo: {
+    flex: 1,
   },
   patientName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#041575',
-    marginBottom: 4,
     fontFamily: 'Figtree_400Regular',
+    marginBottom: 2,
   },
   patientEmail: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#7F8C8D',
     fontFamily: 'Figtree_400Regular',
+  },
+  patientAge: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    fontFamily: 'Figtree_400Regular',
+    marginTop: 2,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Figtree_400Regular',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  viewAllText: {
+    fontSize: 15,
+    color: '#041575',
+    fontWeight: '500',
+    fontFamily: 'Figtree_400Regular',
+    marginRight: 6,
   },
   emptyState: {
     backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 20,
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   emptyStateText: {
     fontSize: 16,
@@ -291,56 +387,57 @@ const styles = StyleSheet.create({
     color: '#999',
     fontFamily: 'Figtree_400Regular',
   },
-  searchContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  searchCard: {
+    backgroundColor: '#E8F4FD',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 20,
   },
-  searchInput: {
-    height: 45,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    backgroundColor: '#f9f9f9',
+  searchTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#041575',
     fontFamily: 'Figtree_400Regular',
-    fontSize: 16,
+    marginBottom: 16,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 16,
+  },
+  searchIcon: {
+    paddingLeft: 14,
+  },
+  searchInput: {
+    flex: 1,
+    height: 48,
+    paddingHorizontal: 12,
+    fontFamily: 'Figtree_400Regular',
+    fontSize: 15,
+    color: '#333',
   },
   searchButton: {
     backgroundColor: '#041575',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
   },
-  connectButton: {
-    marginTop: 15,
-    backgroundColor: '#041575',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  logoutButton: {
-    marginTop: 20,
-    backgroundColor: '#041575',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
+  searchButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Figtree_400Regular',
+  },
+  connectButton: {
+    marginTop: 16,
+    backgroundColor: '#041575',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
   },
   buttonDisabled: {
     backgroundColor: '#999',
@@ -348,9 +445,9 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     backgroundColor: '#ffebee',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#dc3545',
   },
@@ -366,21 +463,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#041575',
-    marginBottom: 10,
-    fontFamily: 'Figtree_400Bold',
+    marginBottom: 12,
+    fontFamily: 'Figtree_400Regular',
   },
-  searchResultLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  logoutText: {
     color: '#666',
-    marginTop: 8,
-    fontFamily: 'Figtree_400Regular',
-  },
-  searchResultValue: {
     fontSize: 16,
-    color: '#041575',
-    marginBottom: 4,
+    fontWeight: '500',
     fontFamily: 'Figtree_400Regular',
+    marginLeft: 8,
   },
 });
 

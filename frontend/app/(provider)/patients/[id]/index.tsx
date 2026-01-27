@@ -4,13 +4,11 @@ import {
   Platform,
   View,
   Pressable,
-  FlatList,
   TouchableOpacity,
   Text,
   Alert,
   ScrollView,
   Modal,
-  Image,
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,13 +19,11 @@ import { Audio } from 'expo-av';
 import config from '@/config';
 import BackButton from '@/components/ui/BackButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import profile from '@/assets/images/profile.png';
-import { Survey, Recording } from '@/types';
+import { Recording } from '@/types';
 import {
   usePatientByEmail,
   useSurveysByPatient,
   useRecordingsByPatient,
-  useRecordingRequestsByPatient,
   useCreateRecordingRequest,
   useDeletePatientConnection,
 } from '@/hooks/queries';
@@ -49,7 +45,6 @@ function PatientDetailsScreen(): React.JSX.Element {
   // Tanstack Query hooks for data fetching
   const { data: patient, error: patientError } = usePatientByEmail(email);
   const { data: surveys = [] } = useSurveysByPatient(patient?.id);
-  const { data: recordingRequests = [] } = useRecordingRequestsByPatient(patient?.id);
   const { data: previousRecordings = [] } = useRecordingsByPatient(patient?.id);
 
   // Mutations
@@ -67,28 +62,37 @@ function PatientDetailsScreen(): React.JSX.Element {
   const [dueDate, setDueDate] = useState<Date>(new Date());
 
   /**
+   * Get patient initials for avatar
+   */
+  const getInitials = (): string => {
+    if (!patient) return '?';
+    const first = patient.firstName?.charAt(0)?.toUpperCase() || '';
+    const last = patient.lastName?.charAt(0)?.toUpperCase() || '';
+    return `${first}${last}`;
+  };
+
+  /**
+   * Get recordings from this week
+   */
+  const getRecordingsThisWeek = (): number => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return previousRecordings.filter(
+      (r) => new Date(r.created_at) > oneWeekAgo
+    ).length;
+  };
+
+  /**
    * Play audio recording
    */
   const playRecording = async (uri: string): Promise<void> => {
     try {
-      console.log("🔊 Attempting to play URI:", uri);
       await stopPlayback();
 
       const fullUrl = uri.startsWith('http') ? uri : `${config.BACKEND_URL}${uri}`;
-      console.log("🌐 Full URL to play:", fullUrl);
 
       if (Platform.OS === 'web') {
         const newSound = new window.Audio(fullUrl);
-        console.log("🎧 Created Audio element:", newSound);
-
-        const canPlayMp3 = newSound.canPlayType('audio/mpeg');
-        const canPlayWav = newSound.canPlayType('audio/wav');
-        console.log(`🧪 canPlayType('audio/mpeg'): ${canPlayMp3}`);
-        console.log(`🧪 canPlayType('audio/wav'): ${canPlayWav}`);
-
-        newSound.onerror = (e) => {
-          console.error("❌ Audio load/play error:", e);
-        };
 
         const soundWrapper: SoundWrapper = {
           stopAsync: () => {
@@ -105,18 +109,17 @@ function PatientDetailsScreen(): React.JSX.Element {
         };
 
         newSound.onended = () => {
-          console.log("✅ Finished playing audio");
           currentlyPlayingRef.current = null;
           setIsPlaying(false);
         };
 
-        const playPromise = newSound.play();
+        newSound.onerror = () => {
+          Alert.alert('Error', 'Could not play recording');
+        };
 
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.error("❌ Failed to play audio:", err);
-          });
-        }
+        newSound.play().catch(() => {
+          Alert.alert('Error', 'Could not play recording');
+        });
 
         currentlyPlayingRef.current = { uri: fullUrl, sound: soundWrapper };
         setIsPlaying(true);
@@ -126,20 +129,18 @@ function PatientDetailsScreen(): React.JSX.Element {
           { shouldPlay: true }
         );
 
-        console.log("📱 Playing sound natively");
         currentlyPlayingRef.current = { uri: fullUrl, sound: newSound };
         setIsPlaying(true);
 
         newSound.setOnPlaybackStatusUpdate((status) => {
           if (status.isLoaded && status.didJustFinish) {
-            console.log("✅ Native audio finished");
             currentlyPlayingRef.current = null;
             setIsPlaying(false);
           }
         });
       }
     } catch (err) {
-      console.error('🚨 Failed to play recording:', err);
+      console.error('Failed to play recording:', err);
       Alert.alert('Error', 'Could not play recording');
     }
   };
@@ -161,7 +162,6 @@ function PatientDetailsScreen(): React.JSX.Element {
       setIsPlaying(false);
     }
   };
-
 
   /**
    * Create a new survey for this patient
@@ -227,18 +227,6 @@ function PatientDetailsScreen(): React.JSX.Element {
   };
 
   /**
-   * Handle completed survey press
-   */
-  const handleCompletedSurveyPress = (survey: Survey): void => {
-    router.push({
-      pathname: `/(provider)/patients/${id}/survey/view/${survey.id}`,
-      params: {
-        patientId: id,
-      },
-    } as any);
-  };
-
-  /**
    * Handle previous recording press
    */
   const handlePreviousRecordingPress = (recording: Recording): void => {
@@ -247,58 +235,29 @@ function PatientDetailsScreen(): React.JSX.Element {
     } as any);
   };
 
+  /**
+   * Format date for display
+   */
+  const formatRecordingDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${month} ${day}, ${year} • ${displayHours}:${minutes} ${ampm}`;
+  };
+
   // Filter surveys and recordings
   const pendingSurveys = surveys.filter((survey) => survey.status === 'sent');
-  const completedSurveys = surveys
-    .filter((survey) => survey.status === 'completed')
-    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime());
-  const pendingRecordings = recordingRequests.filter((req) => req.status === 'sent');
+  const recentRecordings = previousRecordings
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 2);
 
-  /**
-   * Render recording item
-   */
-  const renderRecordingItem = ({ item }: { item: Recording }): React.JSX.Element => {
-    const fileUrl = item.file_url || (item as any).recording_file || (item as any).audio_file;
-    const itemIsPlaying =
-      isPlaying &&
-      currentlyPlayingRef.current?.uri !== undefined &&
-      fileUrl !== undefined &&
-      currentlyPlayingRef.current.uri.includes(fileUrl);
-
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => handlePreviousRecordingPress(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.description}>{item.description}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.playIconButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            if (itemIsPlaying) {
-              stopPlayback();
-            } else {
-              if (!fileUrl) {
-                Alert.alert('Error', 'No audio file available for this recording');
-                return;
-              }
-              playRecording(fileUrl);
-            }
-          }}
-        >
-          <Ionicons
-            name={itemIsPlaying ? 'stop-circle' : 'play-circle'}
-            size={46}
-            color="#041575"
-          />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
+  const recordingsThisWeek = getRecordingsThisWeek();
 
   // Cleanup on unmount
   useEffect(() => {
@@ -310,7 +269,11 @@ function PatientDetailsScreen(): React.JSX.Element {
   if (patientError) {
     return (
       <SafeAreaView style={styles.safeContainer}>
-        <BackButton route="/(provider)/dashboard" />
+        <View style={styles.headerBar}>
+          <BackButton route="/(provider)/dashboard" />
+          <Text style={styles.headerTitle}>Patient Details</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <Text style={{ color: 'red', padding: 20 }}>{patientError.message}</Text>
       </SafeAreaView>
     );
@@ -319,127 +282,155 @@ function PatientDetailsScreen(): React.JSX.Element {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={{ alignSelf: 'flex-start', marginTop: 10, marginLeft: 10, marginBottom: 10 }}>
+        {/* Header Bar */}
+        <View style={styles.headerBar}>
           <BackButton route="/(provider)/dashboard" />
+          <Text style={styles.headerTitle}>Patient Details</Text>
+          <View style={{ width: 40 }} />
         </View>
 
-        {/* Patient Header */}
-        <View style={styles.header}>
-          <Image source={profile} style={styles.profileImage} />
+        {/* Patient Avatar */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>{getInitials()}</Text>
+            <View style={styles.statusDot} />
+          </View>
           {patient ? (
-            <Text style={styles.patientName}>
-              {patient.firstName} {patient.lastName}
+            <>
+              <Text style={styles.patientName}>
+                {patient.firstName} {patient.lastName}
+              </Text>
+              <Text style={styles.patientEmail}>{patient.email}</Text>
+            </>
+          ) : (
+            <Text style={styles.patientName}>Loading...</Text>
+          )}
+        </View>
+
+        {/* Stats Cards */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>RECORDINGS</Text>
+            <Text style={styles.statValue}>{previousRecordings.length}</Text>
+            <Text style={[styles.statStatus, { color: '#27AE60' }]}>
+              +{recordingsThisWeek} this week
             </Text>
-          ) : (
-            <Text>Loading...</Text>
-          )}
+          </View>
         </View>
 
-        {/* Pending Surveys */}
-        <View style={styles.surveysContainer}>
-          <Text style={styles.sectionTitle}>Pending Surveys:</Text>
+        {/* Pending Surveys Section */}
+        <Text style={styles.sectionTitle}>Pending Surveys</Text>
+        <View style={styles.surveysCard}>
           {pendingSurveys.length > 0 ? (
-            <FlatList
-              data={pendingSurveys}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.surveyItem}
-                  onPress={() => console.log(`Pending survey clicked: ${item.title}`)}
+            pendingSurveys.map((survey) => (
+              <View key={survey.id} style={styles.surveyItem}>
+                <Ionicons name="document-text-outline" size={20} color="#041575" />
+                <View style={styles.surveyInfo}>
+                  <Text style={styles.surveyTitle}>{survey.title}</Text>
+                  <Text style={styles.surveyDate}>
+                    Sent: {new Date(survey.issue_date).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="checkbox-outline" size={40} color="#BDC3C7" />
+              <Text style={styles.emptyText}>No pending surveys for this patient.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Recent Recordings Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Recordings</Text>
+          {previousRecordings.length > 2 && (
+            <Pressable onPress={() => router.push(`/(provider)/patients/${id}/recordings` as any)}>
+              <Text style={styles.viewAllLink}>View All</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {recentRecordings.length > 0 ? (
+          recentRecordings.map((recording) => {
+            const fileUrl = recording.file_url || (recording as any).recording_file || (recording as any).audio_file;
+            const itemIsPlaying =
+              isPlaying &&
+              currentlyPlayingRef.current?.uri !== undefined &&
+              fileUrl !== undefined &&
+              currentlyPlayingRef.current.uri.includes(fileUrl);
+
+            return (
+              <Pressable
+                key={recording.id}
+                style={styles.recordingCard}
+                onPress={() => handlePreviousRecordingPress(recording)}
+              >
+                <View style={styles.recordingIconContainer}>
+                  <Ionicons name="mic" size={20} color="#6B7AED" />
+                </View>
+                <View style={styles.recordingInfo}>
+                  <Text style={styles.recordingTitle}>{recording.title}</Text>
+                  <Text style={styles.recordingDate}>
+                    {formatRecordingDate(recording.created_at)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.playButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (itemIsPlaying) {
+                      stopPlayback();
+                    } else {
+                      if (!fileUrl) {
+                        Alert.alert('Error', 'No audio file available');
+                        return;
+                      }
+                      playRecording(fileUrl);
+                    }
+                  }}
                 >
-                  <Text style={styles.surveyTitle}>{item.title}</Text>
-                  <Text style={styles.surveyDate}>
-                    {new Date(item.issue_date).toLocaleDateString()}
-                  </Text>
-                </Pressable>
-              )}
-            />
-          ) : (
-            <Text>No pending surveys.</Text>
-          )}
-        </View>
-
-        {/* Completed Surveys */}
-        <View style={styles.surveysContainer}>
-          <Text style={styles.sectionTitle}>Completed Surveys:</Text>
-          {completedSurveys.length > 0 ? (
-            <FlatList
-              data={completedSurveys}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <Pressable style={styles.surveyItem} onPress={() => handleCompletedSurveyPress(item)}>
-                  <Text style={styles.surveyTitle}>{item.title}</Text>
-                  <Text style={styles.surveyDate}>
-                    {new Date(item.issue_date).toLocaleDateString()}
-                  </Text>
-                </Pressable>
-              )}
-            />
-          ) : (
-            <Text>No completed surveys found.</Text>
-          )}
-        </View>
-
-        {/* Pending Recordings */}
-        <View style={styles.surveysContainer}>
-          <Text style={styles.sectionTitle}>Pending Recordings:</Text>
-          {pendingRecordings.length > 0 ? (
-            <FlatList
-              data={pendingRecordings}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <Pressable style={styles.surveyItem} onPress={() => console.log("Clicked Pending Recording")}>
-                  <Text style={styles.surveyTitle}>{item.title}</Text>
-                  <Text style={styles.surveyDate}>
-                    Issued: {new Date(item.issue_date).toLocaleDateString()}
-                  </Text>
-                  {item.due_date && (
-                    <Text style={styles.dueDateText}>
-                      Due: {new Date(item.due_date).toLocaleDateString()} at{' '}
-                      {new Date(item.due_date).toLocaleTimeString()}
-                    </Text>
-                  )}
-                </Pressable>
-              )}
-            />
-          ) : (
-            <Text>No pending recordings.</Text>
-          )}
-        </View>
-
-        {/* Previous Recordings */}
-        <View style={styles.surveysContainer}>
-          <Text style={styles.sectionTitle}>Previous Recordings:</Text>
-          <FlatList
-            data={previousRecordings}
-            keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
-            scrollEnabled={false}
-            ListEmptyComponent={<Text style={styles.emptyText}>No Recordings yet</Text>}
-            renderItem={renderRecordingItem}
-          />
-        </View>
+                  <Ionicons
+                    name={itemIsPlaying ? 'stop' : 'play'}
+                    size={16}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+              </Pressable>
+            );
+          })
+        ) : (
+          <View style={styles.surveysCard}>
+            <View style={styles.emptyState}>
+              <Ionicons name="mic-off-outline" size={40} color="#BDC3C7" />
+              <Text style={styles.emptyText}>No recordings yet.</Text>
+            </View>
+          </View>
+        )}
 
         {/* Action Buttons */}
-        <Pressable style={styles.surveyButton} onPress={createSurvey}>
-          <Text style={styles.surveyButtonText}>Send a New Survey</Text>
-        </Pressable>
+        <View style={styles.actionsContainer}>
+          <Pressable style={styles.primaryButton} onPress={createSurvey}>
+            <Ionicons name="send" size={18} color="#fff" />
+            <Text style={styles.primaryButtonText}>Send New Survey</Text>
+          </Pressable>
 
-        <Pressable
-          style={[styles.surveyButton, styles.recordingButton]}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={styles.surveyButtonText}>Send a New Recording Request</Text>
-        </Pressable>
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Ionicons name="pulse" size={18} color="#fff" />
+            <Text style={styles.primaryButtonText}>Request New Recording</Text>
+          </Pressable>
 
-        <Pressable
-          style={[styles.surveyButton, styles.deleteConnectionButton]}
-          onPress={() => setDeleteModalVisible(true)}
-        >
-          <Text style={styles.surveyButtonText}>Remove this patient</Text>
-        </Pressable>
+          <Pressable
+            style={styles.dangerButton}
+            onPress={() => setDeleteModalVisible(true)}
+          >
+            <Ionicons name="person-remove-outline" size={18} color="#DC2626" />
+            <Text style={styles.dangerButtonText}>Remove Patient</Text>
+          </Pressable>
+        </View>
 
         {/* Recording Request Modal */}
         <Modal
@@ -549,114 +540,244 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#cae7ff',
   },
-  card: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    paddingTop: 5,
-    paddingBottom: 5,
-    paddingLeft: 15,
-    paddingRight: 15,
-    marginBottom: 16,
-    boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.05)',
-    elevation: 3,
+  content: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  textContainer: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  title: {
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#041575',
     fontFamily: 'Figtree_400Regular',
   },
-  description: {
-    fontSize: 14,
-    color: '#666',
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#041575',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  avatarText: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'Figtree_400Regular',
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#27AE60',
+    borderWidth: 3,
+    borderColor: '#cae7ff',
+  },
+  patientName: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
+    marginBottom: 4,
+  },
+  patientEmail: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    fontFamily: 'Figtree_400Regular',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7F8C8D',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    fontFamily: 'Figtree_400Regular',
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
+  },
+  statStatus: {
+    fontSize: 13,
+    fontWeight: '500',
     marginTop: 4,
     fontFamily: 'Figtree_400Regular',
   },
-  playIconButton: {
-    padding: 8,
-  },
-  content: {
-    flexGrow: 1,
-    alignItems: 'stretch',
-    width: '100%',
-    padding: 20,
-    fontFamily: 'Figtree_400Regular',
-  },
-  profileImage: {
-    width: 75,
-    height: 75,
-    borderRadius: 75,
-  },
-  header: {
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 20,
-    marginBottom: 20,
-  },
-  patientName: {
-    fontSize: 35,
-    fontFamily: 'Figtree_400Regular',
-    color: '#041575',
-    paddingRight: 10,
-  },
-  surveysContainer: {
-    marginTop: 20,
-  },
-  surveyItem: {
-    marginBottom: 15,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-    elevation: 3,
-  },
-  surveyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#041575',
-  },
-  surveyDate: {
-    marginTop: 5,
-    color: '#666',
-  },
-  dueDateText: {
-    marginTop: 5,
-    color: '#DC2626',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  surveyButton: {
-    marginTop: 20,
-    backgroundColor: '#041575',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  recordingButton: {
-    backgroundColor: '#1565C0',
-    marginTop: 15,
-  },
-  deleteConnectionButton: {
-    backgroundColor: '#DC2626',
-    marginTop: 15,
-  },
-  surveyButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#041575',
-    marginBottom: 10,
+    fontFamily: 'Figtree_400Regular',
+    marginBottom: 12,
+  },
+  viewAllLink: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '500',
+    fontFamily: 'Figtree_400Regular',
+  },
+  surveysCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  surveyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  surveyInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  surveyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
+  },
+  surveyDate: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginTop: 2,
+    fontFamily: 'Figtree_400Regular',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginTop: 12,
+    fontFamily: 'Figtree_400Regular',
+  },
+  recordingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  recordingIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  recordingInfo: {
+    flex: 1,
+  },
+  recordingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#041575',
+    fontFamily: 'Figtree_400Regular',
+  },
+  recordingDate: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginTop: 2,
+    fontFamily: 'Figtree_400Regular',
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#041575',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionsContainer: {
+    marginTop: 16,
+    gap: 12,
+  },
+  primaryButton: {
+    backgroundColor: '#041575',
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Figtree_400Regular',
+  },
+  dangerButton: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+  },
+  dangerButtonText: {
+    color: '#DC2626',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Figtree_400Regular',
   },
   centeredView: {
     flex: 1,
@@ -665,12 +786,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalView: {
-    width: '80%',
+    width: '85%',
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 25,
     alignItems: 'center',
-    boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
     elevation: 5,
   },
   modalTitle: {
@@ -678,15 +802,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#041575',
     marginBottom: 15,
+    fontFamily: 'Figtree_400Regular',
   },
   input: {
     width: '100%',
     height: 50,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
     marginBottom: 20,
+    fontFamily: 'Figtree_400Regular',
+    fontSize: 15,
   },
   datePickerContainer: {
     width: '100%',
@@ -697,6 +824,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#041575',
     marginBottom: 8,
+    fontFamily: 'Figtree_400Regular',
   },
   dateButtonsRow: {
     flexDirection: 'row',
@@ -705,7 +833,7 @@ const styles = StyleSheet.create({
   },
   dateButton: {
     flex: 1,
-    backgroundColor: '#1565C0',
+    backgroundColor: '#3B82F6',
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -716,46 +844,42 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Figtree_400Regular',
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+    gap: 12,
   },
   button: {
+    flex: 1,
     borderRadius: 10,
-    padding: 10,
-    elevation: 2,
-    minWidth: 100,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   buttonCancel: {
-    backgroundColor: '#888',
+    backgroundColor: '#6B7280',
   },
   buttonSubmit: {
     backgroundColor: '#041575',
   },
+  buttonDelete: {
+    backgroundColor: '#DC2626',
+  },
   textStyle: {
     color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  emptyText: {
+    fontWeight: '600',
     fontSize: 15,
-    fontStyle: 'italic',
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 20,
+    fontFamily: 'Figtree_400Regular',
   },
   deleteWarningText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#4B5563',
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 22,
-  },
-  buttonDelete: {
-    backgroundColor: '#DC2626',
+    fontFamily: 'Figtree_400Regular',
   },
 });
 
