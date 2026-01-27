@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.db import models
 from .models import Provider, ProviderPatientConnection
 from .forms import ProviderForm, UserForm
 from django.contrib.auth.models import User
@@ -304,6 +305,41 @@ def get_provider_info(request):
         )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_providers(request):
+    """
+    Search providers by name or return all providers if no query.
+    Query param: ?q=search_term
+    """
+    try:
+        search_query = request.query_params.get('q', '').strip()
+
+        if search_query:
+            # Search by first name or last name (case-insensitive)
+            providers = Provider.objects.filter(
+                models.Q(firstName__icontains=search_query) |
+                models.Q(lastName__icontains=search_query)
+            )
+        else:
+            providers = Provider.objects.all()
+
+        providers_data = [
+            {
+                "id": provider.id,
+                "firstName": provider.firstName,
+                "lastName": provider.lastName,
+                "email": provider.user.email,
+            }
+            for provider in providers
+        ]
+
+        return Response({"providers": providers_data}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])

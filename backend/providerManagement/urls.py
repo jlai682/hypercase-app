@@ -18,5 +18,8 @@ urlpatterns = [
     # For patients to find their provider
     path("get_provider_by_patient/", views.get_provider_by_patient, name = "provider_by_patient"),
 
+    # Search all providers (for patients)
+    path("search/", views.search_providers, name = "search_providers"),
+
 ]
 

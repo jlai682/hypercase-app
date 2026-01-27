@@ -1,53 +1,62 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
 import { useAuth } from "@/components/auth/AuthContext";
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { usePatientProfile } from '@/hooks/queries';
 
-
-interface SectionItemProps {
+interface MenuItemProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
+  iconBgColor?: string;
   title: string;
-  hasChevron?: boolean;
   onPress: () => void;
+  textColor?: string;
 }
 
-const SectionItem: React.FC<SectionItemProps> = ({ title, hasChevron = true, onPress }) => {
+const MenuItem: React.FC<MenuItemProps> = ({
+  icon,
+  iconColor = '#041575',
+  iconBgColor = '#F0F0F0',
+  title,
+  onPress,
+  textColor = '#333'
+}) => {
   return (
-    <TouchableOpacity style={styles.sectionItem} onPress={onPress}>
-      <Text style={styles.sectionItemText}>{title}</Text>
-      {hasChevron && <Ionicons name="chevron-forward" size={20} color="#888" />}
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <View style={[styles.menuIconContainer, { backgroundColor: iconBgColor }]}>
+        <Ionicons name={icon} size={20} color={iconColor} />
+      </View>
+      <Text style={[styles.menuItemText, { color: textColor }]}>{title}</Text>
+      <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
     </TouchableOpacity>
   );
 };
 
-interface SectionProps {
-  title?: string;
-  children: React.ReactNode;
-}
-
-const Section: React.FC<SectionProps> = ({ title, children }) => {
-  return (
-    <View style={styles.section}>
-      {title && <Text style={styles.sectionTitle}>{title}</Text>}
-      <View style={styles.sectionContent}>
-        {children}
-      </View>
-    </View>
-  );
-};
-
-function ProfileScreen(): React.JSX.Element | null {
+function ProfileScreen(): React.JSX.Element {
   const { onLogout } = useAuth();
-
+  const router = useRouter();
   const { data: patient, isLoading: loading } = usePatientProfile();
+
+  /**
+   * Get member year from date_joined or current year
+   */
+  const getMemberYear = (): number => {
+    if (patient?.date_joined) {
+      return new Date(patient.date_joined).getFullYear();
+    }
+    return new Date().getFullYear();
+  };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#4285F4" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#041575" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -55,45 +64,106 @@ function ProfileScreen(): React.JSX.Element | null {
   if (!patient) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>No patient data available</Text>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#E74C3C" />
+          <Text style={styles.errorText}>No patient data available</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
-  console.log("patient: ", patient);
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.profileContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        
+        {/* Avatar Section */}
+        <View style={styles.avatarSection}>
           <View style={styles.avatarContainer}>
-            <Image
-              style={styles.avatar}
-            />
+            <Ionicons name="person" size={60} color="#fff" />
+            <View style={styles.cameraButton}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </View>
           </View>
-          <Text>{patient.firstName} {patient.lastName}</Text>
-          <Text>age: {patient.age}</Text>
-          <Text>email: {patient.email}</Text>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.editButton}>
-            <Text style={styles.editButtonText}>Edit Profile</Text>
+          <Text style={styles.patientName}>{patient.firstName} {patient.lastName}</Text>
+          <Text style={styles.patientInfo}>
+            Age: {patient.age} • Member since {getMemberYear()}
+          </Text>
+          <Text style={styles.patientEmail}>{patient.email}</Text>
+
+          <TouchableOpacity style={styles.editProfileButton}>
+            <Ionicons name="pencil" size={16} color="#fff" />
+            <Text style={styles.editProfileText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
 
-        <Section title="My Health">
-          <SectionItem title="Medical History" onPress={() => console.log('Medical History')} />
-          <SectionItem title="Physicians" onPress={() => console.log('Physicians')} />
-        </Section>
+        {/* My Health Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>MY HEALTH</Text>
+          <View style={styles.menuCard}>
+            <MenuItem
+              icon="medical"
+              iconColor="#041575"
+              iconBgColor="#EEF2FF"
+              title="Medical History"
+              onPress={() => router.push('/(patient)/medical-history' as any)}
+            />
+            <View style={styles.menuDivider} />
+            <MenuItem
+              icon="medkit"
+              iconColor="#27AE60"
+              iconBgColor="#E8F8F0"
+              title="Physicians"
+              onPress={() => router.push('/(patient)/physicians' as any)}
+            />
+          </View>
+        </View>
 
-        <Section title="Settings">
-          <SectionItem title="Terms & Conditions" onPress={() => console.log('Terms & Conditions')} />
-          <SectionItem title="Consent Form" onPress={() => console.log('Consent Form')} />
-        </Section>
+        {/* Account Settings Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>ACCOUNT SETTINGS</Text>
+          <View style={styles.menuCard}>
+            <MenuItem
+              icon="document-text"
+              iconColor="#041575"
+              iconBgColor="#EEF2FF"
+              title="Terms & Conditions"
+              onPress={() => router.push('/(patient)/terms' as any)}
+            />
+            <View style={styles.menuDivider} />
+            <MenuItem
+              icon="checkbox"
+              iconColor="#041575"
+              iconBgColor="#EEF2FF"
+              title="Consent Form"
+              onPress={() => router.push('/(patient)/consent-view' as any)}
+            />
+            <View style={styles.menuDivider} />
+            <MenuItem
+              icon="notifications"
+              iconColor="#041575"
+              iconBgColor="#EEF2FF"
+              title="Notifications"
+              onPress={() => console.log('Notifications')}
+            />
+          </View>
+        </View>
 
-        <Section title="Others">
-          <SectionItem title="Log Out" onPress={onLogout} />
-        </Section>
+        {/* Logout */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.menuCard}>
+            <MenuItem
+              icon="log-out-outline"
+              iconColor="#E74C3C"
+              iconBgColor="#FDEDEC"
+              title="Log Out"
+              textColor="#E74C3C"
+              onPress={onLogout}
+            />
+          </View>
+        </View>
+
+        {/* Version */}
+        <Text style={styles.versionText}>Version 2.4.0 (Build 1082)</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -102,89 +172,162 @@ function ProfileScreen(): React.JSX.Element | null {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#cae7ff',
   },
-  scrollView: {
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 40,
+  },
+  loadingContainer: {
     flex: 1,
-  },
-  profileContainer: {
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'Figtree_400Regular',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#E74C3C',
+    fontFamily: 'Figtree_400Regular',
+  },
+  themeToggleContainer: {
+    alignItems: 'flex-end',
+    paddingTop: 10,
+    marginBottom: 10,
+  },
+  themeToggle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 30,
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#4285F4',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    position: 'relative',
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    tintColor: '#fff',
+  cameraButton: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#cae7ff',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    width: '100%',
-    marginVertical: 16,
+  patientName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#041575',
+    marginBottom: 8,
+    fontFamily: 'Figtree_400Regular',
   },
-  editButton: {
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 4,
+  patientInfo: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    marginBottom: 4,
+    fontFamily: 'Figtree_400Regular',
   },
-  editButtonText: {
+  patientEmail: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    marginBottom: 20,
+    fontFamily: 'Figtree_400Regular',
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+  },
+  editProfileText: {
     color: '#fff',
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Figtree_400Regular',
   },
-  section: {
-    marginTop: 16,
+  sectionContainer: {
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
-    marginLeft: 16,
-    marginBottom: 8,
-    color: '#666',
+    color: '#7F8C8D',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    marginLeft: 4,
+    fontFamily: 'Figtree_400Regular',
   },
-  sectionContent: {
+  menuCard: {
     backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#e0e0e0',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionItem: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  sectionItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#d6e6ff',
-    height: 60,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
-    height: '100%',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  menuItemText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'Figtree_400Regular',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginLeft: 70,
+  },
+  versionText: {
+    textAlign: 'center',
+    fontSize: 13,
+    color: '#BDC3C7',
+    marginTop: 20,
+    fontFamily: 'Figtree_400Regular',
   },
 });
 

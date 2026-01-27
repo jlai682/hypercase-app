@@ -94,7 +94,31 @@ export default function PatientLayout() {
       <Tabs.Screen
         name="surveys/view/[id]"
         options={{
-          href: null, 
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="terms"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="consent-view"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="physicians"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="medical-history"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

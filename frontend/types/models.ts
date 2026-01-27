@@ -6,6 +6,7 @@ export interface Patient {
   lastName: string;
   email: string;
   age?: number;
+  date_joined?: string;
 }
 
 export interface Provider {

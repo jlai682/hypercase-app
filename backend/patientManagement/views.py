@@ -152,6 +152,7 @@ def patient_profile(request):
             "phone_number": patient.phone_number,
             "email": patient.user.email,
             "id": patient.id,
+            "date_joined": patient.user.date_joined.isoformat(),
         }
         return Response(patient_data)
     except Patient.DoesNotExist:

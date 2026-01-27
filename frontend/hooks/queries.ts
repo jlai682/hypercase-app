@@ -37,6 +37,19 @@ export function usePatientProvider() {
   });
 }
 
+export function useSearchProviders(searchQuery: string) {
+  const { authState } = useAuth();
+  return useQuery({
+    queryKey: ['providers', 'search', searchQuery],
+    queryFn: async () => {
+      const queryParam = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
+      const data = await apiFetch<{ providers: Provider[] }>(`/api/providerManagement/search/${queryParam}`, authState.token!);
+      return data.providers || [];
+    },
+    enabled: !!authState.token,
+  });
+}
+
 export function useRecordingRequests() {
   const { authState } = useAuth();
   return useQuery({
