@@ -24,6 +24,7 @@ import {
   usePatientByEmail,
   useSurveysByPatient,
   useRecordingsByPatient,
+  useRecordingRequestsByPatient,
   useCreateRecordingRequest,
   useDeletePatientConnection,
 } from '@/hooks/queries';
@@ -46,6 +47,7 @@ function PatientDetailsScreen(): React.JSX.Element {
   const { data: patient, error: patientError } = usePatientByEmail(email);
   const { data: surveys = [] } = useSurveysByPatient(patient?.id);
   const { data: previousRecordings = [] } = useRecordingsByPatient(patient?.id);
+  const { data: recordingRequests = [] } = useRecordingRequestsByPatient(patient?.id);
 
   // Mutations
   const createRecordingRequestMutation = useCreateRecordingRequest();
@@ -251,11 +253,18 @@ function PatientDetailsScreen(): React.JSX.Element {
     return `${month} ${day}, ${year} • ${displayHours}:${minutes} ${ampm}`;
   };
 
-  // Filter surveys and recordings
-  const pendingSurveys = surveys.filter((survey) => survey.status === 'sent');
-  const recentRecordings = previousRecordings
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 2);
+  // Filter and sort surveys and recordings (most recent first)
+  const pendingSurveys = surveys
+    .filter((survey) => survey.status === 'sent')
+    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime());
+  const completedSurveys = surveys
+    .filter((survey) => survey.status === 'completed')
+    .sort((a, b) => new Date(b.response_date || b.issue_date).getTime() - new Date(a.response_date || a.issue_date).getTime());
+  const pendingRecordings = recordingRequests
+    .filter((req) => req.status === 'sent')
+    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime());
+  const completedRecordings = previousRecordings
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const recordingsThisWeek = getRecordingsThisWeek();
 
@@ -341,18 +350,61 @@ function PatientDetailsScreen(): React.JSX.Element {
           )}
         </View>
 
-        {/* Recent Recordings Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Recordings</Text>
-          {previousRecordings.length > 2 && (
-            <Pressable onPress={() => router.push(`/(provider)/patients/${id}/recordings` as any)}>
-              <Text style={styles.viewAllLink}>View All</Text>
-            </Pressable>
+        {/* Pending Recordings Section */}
+        <Text style={styles.sectionTitle}>Pending Recordings</Text>
+        <View style={styles.surveysCard}>
+          {pendingRecordings.length > 0 ? (
+            pendingRecordings.map((request) => (
+              <View key={request.id} style={styles.surveyItem}>
+                <Ionicons name="mic-outline" size={20} color="#E67E22" />
+                <View style={styles.surveyInfo}>
+                  <Text style={styles.surveyTitle}>{request.title}</Text>
+                  <Text style={styles.surveyDate}>
+                    Sent: {new Date(request.issue_date).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="mic-off-outline" size={40} color="#BDC3C7" />
+              <Text style={styles.emptyText}>No pending recording requests.</Text>
+            </View>
           )}
         </View>
 
-        {recentRecordings.length > 0 ? (
-          recentRecordings.map((recording) => {
+        {/* Completed Surveys Section */}
+        <Text style={styles.sectionTitle}>Completed Surveys</Text>
+        <View style={styles.surveysCard}>
+          {completedSurveys.length > 0 ? (
+            completedSurveys.map((survey) => (
+              <Pressable
+                key={survey.id}
+                style={styles.surveyItem}
+                onPress={() => router.push(`/(provider)/patients/${id}/survey/view/${survey.id}?patientId=${patient?.id}` as any)}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#27AE60" />
+                <View style={styles.surveyInfo}>
+                  <Text style={styles.surveyTitle}>{survey.title}</Text>
+                  <Text style={styles.surveyDate}>
+                    Completed: {survey.response_date ? new Date(survey.response_date).toLocaleDateString() : 'N/A'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
+              </Pressable>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-outline" size={40} color="#BDC3C7" />
+              <Text style={styles.emptyText}>No completed surveys yet.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Completed Recordings Section */}
+        <Text style={styles.sectionTitle}>Completed Recordings</Text>
+        {completedRecordings.length > 0 ? (
+          completedRecordings.map((recording) => {
             const fileUrl = recording.file_url || (recording as any).recording_file || (recording as any).audio_file;
             const itemIsPlaying =
               isPlaying &&
