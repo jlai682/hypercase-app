@@ -4,7 +4,7 @@ import config from '@/config';
 import { useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { showAlert } from '@/components/utils/alerts';
-import { queryClient } from '@/app/_layout';
+import { queryClient } from '@/lib/queryClient';
 
 const isTokenExpired = (token: string | null): boolean => {
     if (!token) return true;
