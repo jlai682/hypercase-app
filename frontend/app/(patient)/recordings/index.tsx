@@ -12,7 +12,7 @@ import config from '@/config';
 
 function RecordingsScreen(): React.JSX.Element {
   const router = useRouter();
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<{ id: number; sound: any } | null>(null);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<{ id: string | number; sound: any } | null>(null);
 
   // Tanstack Query hooks
   const { data: patient } = usePatientProfile();
@@ -50,7 +50,7 @@ function RecordingsScreen(): React.JSX.Element {
 
   const playRecording = async (item: Recording) => {
     try {
-      const fileUrl = item.file_url || item.recording_file;
+      const fileUrl = item.file_url;
       if (!fileUrl) {
         Alert.alert('Error', 'No audio file available for this recording');
         return;
@@ -218,7 +218,7 @@ function RecordingsScreen(): React.JSX.Element {
                 >
                   <View style={styles.recordingInfo}>
                     <Text style={styles.recordingTitle}>
-                      {recording.name || recording.title || `Recording ${recording.id}`}
+                      {recording.title || `Recording ${recording.id}`}
                     </Text>
                     <View style={styles.recordingDateRow}>
                       <Ionicons name="calendar-outline" size={14} color="#7F8C8D" />
