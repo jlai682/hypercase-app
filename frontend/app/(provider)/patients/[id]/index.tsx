@@ -27,6 +27,7 @@ import {
   useRecordingRequestsByPatient,
   useCreateRecordingRequest,
   useDeletePatientConnection,
+  useDeleteRecording,
 } from '@/hooks/queries';
 
 interface SoundWrapper {
@@ -52,6 +53,7 @@ function PatientDetailsScreen(): React.JSX.Element {
   // Mutations
   const createRecordingRequestMutation = useCreateRecordingRequest();
   const deleteConnectionMutation = useDeletePatientConnection();
+  const deleteRecordingMutation = useDeleteRecording();
 
   // Audio playback states
   const currentlyPlayingRef = useRef<PlayingAudio | null>(null);
@@ -194,6 +196,33 @@ function PatientDetailsScreen(): React.JSX.Element {
         Alert.alert('Error', error.message || 'Failed to remove patient connection');
       },
     });
+  };
+
+  /**
+   * Delete a recording with confirmation
+   */
+  const confirmDeleteRecording = (recording: Recording): void => {
+    Alert.alert(
+      'Delete Recording',
+      `Are you sure you want to delete "${recording.title}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteRecordingMutation.mutate(recording.id, {
+              onSuccess: () => {
+                Alert.alert('Success', 'Recording deleted successfully.');
+              },
+              onError: (error) => {
+                Alert.alert('Error', error.message || 'Failed to delete recording.');
+              },
+            });
+          },
+        },
+      ]
+    );
   };
 
   /**
@@ -427,6 +456,15 @@ function PatientDetailsScreen(): React.JSX.Element {
                     {formatRecordingDate(recording.created_at)}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    confirmDeleteRecording(recording);
+                  }}
+                >
+                  <Ionicons name="trash" size={16} color="#fff" />
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.playButton}
                   onPress={(e) => {
@@ -786,6 +824,15 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginTop: 2,
     fontFamily: 'Figtree_400Regular',
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   playButton: {
     width: 36,

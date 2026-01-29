@@ -270,6 +270,21 @@ export function useCreateRecordingRequest() {
   });
 }
 
+export function useDeleteRecording() {
+  const { authState } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (recordingId: string | number) =>
+      apiFetch(`/api/recordings/${recordingId}/delete/`, authState.token!, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recordings'] });
+    },
+  });
+}
+
 export function useDeletePatientConnection() {
   const { authState } = useAuth();
   const queryClient = useQueryClient();

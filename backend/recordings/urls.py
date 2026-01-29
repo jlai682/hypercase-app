@@ -6,6 +6,7 @@ urlpatterns = [
     # Recording upload and management
     path('upload/', views.upload_recording, name='upload_recording'),
     path('<int:recording_id>/complete-request/', views.complete_recording_request, name='complete_recording_request'),
+    path('<int:recording_id>/delete/', views.delete_recording, name='delete_recording'),
     path('patient/<int:patient_id>/', views.get_patient_recordings, name='patient_recordings'),
 
     # Recording requests

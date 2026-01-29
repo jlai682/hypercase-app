@@ -271,6 +271,31 @@ def create_recording_request(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_recording(request, recording_id):
+    """Delete a recording. Only the connected provider can delete."""
+    try:
+        recording = Recording.objects.get(id=recording_id)
+    except Recording.DoesNotExist:
+        return Response({'error': 'Recording not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Only allow connected providers to delete
+    try:
+        provider = Provider.objects.get(user=request.user)
+    except Provider.DoesNotExist:
+        return Response({'error': 'Provider profile not found'}, status=status.HTTP_403_FORBIDDEN)
+
+    if not ProviderPatientConnection.objects.filter(provider=provider, patient=recording.patient).exists():
+        return Response(
+            {'error': 'You are not authorized to delete this recording'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    recording.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_patient_recordings(request, patient_id):
