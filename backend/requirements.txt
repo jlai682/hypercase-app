@@ -26,7 +26,6 @@ pillow==11.2.1
 pluggy==1.6.0
 praat-parselmouth==0.4.6
 prompt_toolkit==3.0.51
-psycopg2==2.9.10
 psycopg2-binary==2.9.10
 pydub==0.25.1
 Pygments==2.19.2
