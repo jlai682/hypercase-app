@@ -45,7 +45,7 @@ function HomeScreen() {
           <>
             {/* Welcome Header */}
             <View style={styles.headerSection}>
-              <Text style={styles.welcomeTitle}>Welcome back, {patient?.firstName}</Text>
+              <Text style={styles.welcomeTitle}>Welcome, {patient?.firstName}</Text>
               <Text style={styles.welcomeSubtitle}>How are you feeling today?</Text>
             </View>
 
