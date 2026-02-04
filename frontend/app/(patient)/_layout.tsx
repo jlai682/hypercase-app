@@ -90,6 +90,7 @@ export default function PatientLayout() {
         name="consent"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
