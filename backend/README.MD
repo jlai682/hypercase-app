@@ -1,10 +1,63 @@
-# Steps for getting the backend running:
+# AcoustiCare Backend
 
-** do everything in the backend folder of the directory 
+**Note:** The backend is already deployed to production. There is no need to run this locally unless you are developing or testing changes.
 
-1. create a virtual environment: 
+---
 
-Windows: 
+## Running with Docker
+
+### 1. Install Docker Desktop
+
+**Mac:**
+- Download Docker Desktop from https://www.docker.com/products/docker-desktop/
+- Open the downloaded `.dmg` file and drag Docker to Applications
+- Launch Docker Desktop from Applications
+- Wait for Docker to start (whale icon in menu bar will stop animating)
+
+**Windows:**
+- Download Docker Desktop from https://www.docker.com/products/docker-desktop/
+- Run the installer and follow the prompts
+- Restart your computer if prompted
+- Launch Docker Desktop and wait for it to start
+
+### 2. Set up environment variables
+
+Make sure you have a `.env` file in the backend folder with the required variables:
+
+```bash
+SECRET_KEY=your_secret_key_here
+```
+
+To generate a secret key:
+```bash
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+```
+
+### 3. Run the backend
+
+From the `backend` folder, run:
+```bash
+docker-compose up
+```
+
+To stop the containers:
+```bash
+docker-compose down
+```
+
+To rebuild after making changes:
+```bash
+docker-compose up --build
+```
+---
+
+## Running without Docker
+
+** do everything in the backend folder of the directory
+
+### 1. Create a virtual environment
+
+Windows:
 ```bash
 python -m venv venv
 ```
@@ -14,36 +67,30 @@ Mac:
 python3 -m venv venv
 ```
 
-2. Activate the virtual environment:
+### 2. Activate the virtual environment
 
 Windows:
 ```bash
 venv\Scripts\activate
 ```
 
-Mac: 
+Mac:
 ```bash
 source venv/bin/activate
 ```
 
-3. install Django 
-
-```bash
-pip install django
-```
-
-4. Install Requirements
+### 3. Install Requirements
 
 ```bash
 pip install -r requirements.txt
 ```
 
-5. Configure the backend URL for the frontend to communicate with
+### 4. Configure the backend URL for the frontend to communicate with
 
-Create a new file called config.js in the root folder of the frontend. The file should look like this: 
+Create a new file called config.js in the root folder of the frontend. The file should look like this:
 
 ```bash
-const BACKEND_URL = 'http://<YOUR IP ADDRESS HERE>:8000';  
+const BACKEND_URL = 'http://<YOUR IP ADDRESS HERE>:8000';
 
 export default {
     BACKEND_URL,
@@ -52,19 +99,21 @@ export default {
 
 This basically sets an environment variable for us to use because your backend will be hosted locally.
 
-5. Run the Django Development server
+### 6. Run the Django Development server
 
 ```bash
 python manage.py runserver 0.0.0.0:8000
 ```
 
-# Steps for setting up a local database:
+---
 
-1. Install PostgreSQL: 
+## Setting up a local database
+
+### 1. Install PostgreSQL
 
 Mac:
 ```bash
-brew install postgresql 
+brew install postgresql
 ```
 
 Windows (via Chocolatey):
@@ -72,7 +121,7 @@ Windows (via Chocolatey):
 choco install postgresql
 ```
 
-2. Install psycopg2
+### 2. Install psycopg2
 
 In the virtual environment in your project terminal, run:
 
@@ -80,15 +129,15 @@ In the virtual environment in your project terminal, run:
 pip install psycopg2
 ```
 
-3. Create the database locally:
+### 3. Create the database locally
 
-In your terminal, run: 
+In your terminal, run:
 
 ```bash
 psql -U postgres
 ```
 
-If it says "role does not exist," create the default postgres user, and run the above command again: 
+If it says "role does not exist," create the default postgres user, and run the above command again:
 
 ```bash
 createuser -s postgres
@@ -100,41 +149,23 @@ Then, create the database:
 ```bash
 CREATE DATABASE hypercase;
 ```
-* note: MUST be 'hypercase' 
+* note: MUST be 'hypercase'
 
 Then, change the postgres password by running:
 
 ```bash
 ALTER USER postgres WITH PASSWORD 'hypercase123';
 ```
-* note: MUST be 'hypercase123' 
+* note: MUST be 'hypercase123'
 
 
-4. Make migrations and migrate to the new database:
+### 4. Make migrations and migrate to the new database
 
-in your project terminal (in the virtual environment), run the following commands:
+In your project terminal (in the virtual environment), run the following commands:
 
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-From here, you should be able to run the project as normally (on any wifi) and signup/login as you please. the only issue is we won't be collaborating on the same datbase, which should be fine for development purposes for now. 
-
-
-# Setup .env file to protect secrets
-
-1. Make a new file named ".env" in the root of backend folder. 
-
-2. Activate virtual environment.
-
-3. Generate a secret key by typing the command in the terminal below: 
-```bash
-python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
-```
-
-4. Copy and paste the key and set it equal to SECRET_KEY. Your .env file should have the same format as below
-
-```bash
-SECRET_KEY=*copy_and_pasted_key*  
-```
+Last edited by: Suraj Kumar 2/5/2026
