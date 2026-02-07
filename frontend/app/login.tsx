@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/components/auth/AuthContext';
 import BackButton from '@/components/ui/BackButton';
 import { showAlert } from '@/components/utils/alerts';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 
 type LoginType = 'patient' | 'provider';
 
@@ -67,6 +68,17 @@ const Login = (): React.JSX.Element => {
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
+
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <GoogleSignInButton
+          onPress={() => {}}
+          label="Sign in with Google"
+        />
       </View>
 
       <View style={styles.registerContainer}>
@@ -134,6 +146,23 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
+    fontFamily: 'Figtree_400Regular',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 300,
+    marginVertical: 15,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#999',
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    fontSize: 14,
+    color: '#666',
     fontFamily: 'Figtree_400Regular',
   },
   registerText: {
