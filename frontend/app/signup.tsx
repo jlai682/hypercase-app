@@ -70,18 +70,21 @@ const Signup = (): React.JSX.Element => {
         <TextInput
           style={styles.input}
           placeholder="First Name"
+          placeholderTextColor="#041575"
           value={firstName}
           onChangeText={setFirstName}
         />
         <TextInput
           style={styles.input}
           placeholder="Last Name"
+          placeholderTextColor="#041575"
           value={lastName}
           onChangeText={setLastName}
         />
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#041575"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -91,6 +94,7 @@ const Signup = (): React.JSX.Element => {
           <TextInput
             style={styles.input}
             placeholder="Age"
+            placeholderTextColor="#041575"
             value={age}
             onChangeText={setAge}
             keyboardType="numeric"
@@ -99,6 +103,7 @@ const Signup = (): React.JSX.Element => {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor="#041575"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
