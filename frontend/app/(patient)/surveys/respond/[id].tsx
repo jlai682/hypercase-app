@@ -95,6 +95,13 @@ function SurveyResponder(): React.JSX.Element {
 
   const error = queryError?.message || null;
 
+  // Reset state when navigating to a different survey
+  useEffect(() => {
+    setSelectedOptions({});
+    setOpenResponses({});
+    setMultipleChoiceResponses([]);
+  }, [id]);
+
   // Update multiple choice responses when selected options change
   useEffect(() => {
     if (!surveyData?.multiple_choice_responses) return;
