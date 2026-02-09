@@ -58,13 +58,12 @@ def create_survey(request):
                 response=""
             )
 
-        # Create blank MultipleChoiceResponses (with null selected_option if model allows)
+        # Create blank MultipleChoiceResponses
         for qid in mc_question_ids:
             question = MultipleChoiceQuestion.objects.get(id=qid)
             MultipleChoiceResponse.objects.create(
                 survey=survey,
                 question=question,
-                selected_option=None  # null allowed in model
             )
 
         return Response({'message': 'Survey created successfully'}, status=status.HTTP_201_CREATED)
@@ -141,7 +140,7 @@ def get_questions_by_survey(request, survey_id):
         open_responses = OpenQuestionResponse.objects.filter(survey=survey)
 
         # Fetch the multiple choice responses and include the options
-        multiple_choice_responses = MultipleChoiceResponse.objects.filter(survey=survey).select_related('question', 'selected_option')
+        multiple_choice_responses = MultipleChoiceResponse.objects.filter(survey=survey).select_related('question').prefetch_related('selected_options')
 
         # Use serializers to format the data
         open_responses_data = OpenQuestionResponseSerializer(open_responses, many=True).data
@@ -173,16 +172,18 @@ def submit_survey(request, survey_id):
     # Process Multiple Choice Responses
     for mc in mc_responses:
         question_id = mc.get("questionObject").get("question").get("id")
-        selected_option_id = mc.get("response").get("id")
+        response_data = mc.get("response")  # now a list of {id, option} or null
 
         try:
-            # Retrieve the response object based on the survey and question
             response = MultipleChoiceResponse.objects.get(survey=survey, question__id=question_id)
-            selected_option = MultipleChoiceOption.objects.get(id=selected_option_id)
-            response.selected_option = selected_option
-            response.save()
-        except (MultipleChoiceResponse.DoesNotExist, MultipleChoiceOption.DoesNotExist):
-            return Response({"error": f"Invalid multiple choice question or option for question_id {question_id}."},
+            if response_data:
+                option_ids = [opt.get("id") for opt in response_data]
+                options = MultipleChoiceOption.objects.filter(id__in=option_ids)
+                response.selected_options.set(options)
+            else:
+                response.selected_options.clear()
+        except MultipleChoiceResponse.DoesNotExist:
+            return Response({"error": f"Invalid multiple choice question for question_id {question_id}."},
                             status=status.HTTP_400_BAD_REQUEST)
 
     # Process Open Question Responses

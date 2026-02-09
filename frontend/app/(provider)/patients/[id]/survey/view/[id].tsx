@@ -17,7 +17,7 @@ import { useSurveysByPatient, useSurveyQuestions } from '@/hooks/queries';
 interface CombinedResponse {
   question: Question;
   options?: Option[];
-  selected_option?: string;
+  selected_options?: string[];
   response?: string;
 }
 
@@ -68,7 +68,7 @@ function CompletedSurveyView(): React.JSX.Element {
               <Text
                 style={[
                   styles.optionText,
-                  item.selected_option === option.option && styles.selectedOption,
+                  item.selected_options?.includes(option.option) && styles.selectedOption,
                 ]}
               >
                 {option.option}

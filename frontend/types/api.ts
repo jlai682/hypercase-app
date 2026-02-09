@@ -74,6 +74,7 @@ export interface Question {
 export interface MultipleChoiceQuestion {
   question: Question;
   options: Option[];
+  is_multi_select?: boolean;
 }
 
 export interface OpenResponseQuestion {
@@ -96,7 +97,7 @@ export interface SurveyQuestionsResponse {
     question: SurveyQuestion,
     options: [ {id: string | number; option: string }],
     response?: string,
-    selected_option?: string,
+    selected_options?: string[],
   ];
   open_responses: [
     question: SurveyQuestion,
@@ -122,7 +123,7 @@ export interface SurveySubmitRequest {
       question: SurveyQuestion;
       options: [ { id: string | number; option: string } ],
     },
-    response: { id: string | number; option: string } | null,
+    response: { id: string | number; option: string }[] | null,
   ],
   open_responses: Record<number, {
     questionObject: {

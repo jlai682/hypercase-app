@@ -34,9 +34,10 @@ class OpenQuestionResponse(models.Model):
     def __str__(self):
         return self.response
     
-# Generic curated multiple choice question 
+# Generic curated multiple choice question
 class MultipleChoiceQuestion(models.Model):
     question_description = models.CharField(max_length=255)
+    is_multi_select = models.BooleanField(default=False)
 
     def __str__(self):
         return self.question_description
@@ -53,7 +54,8 @@ class MultipleChoiceOption(models.Model):
 class MultipleChoiceResponse(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE)
     question = models.ForeignKey(MultipleChoiceQuestion, on_delete=models.CASCADE)
-    selected_option = models.ForeignKey(MultipleChoiceOption, on_delete=models.CASCADE, null=True, blank=True)
+    selected_options = models.ManyToManyField(MultipleChoiceOption, blank=True, related_name='responses')
 
     def __str__(self):
-        return self.selected_option.option
+        options = self.selected_options.all()
+        return ', '.join(o.option for o in options) if options.exists() else 'No selection'

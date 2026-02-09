@@ -28,22 +28,21 @@ class MultipleChoiceQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MultipleChoiceQuestion
-        fields = ['id', 'question_description', 'options']
+        fields = ['id', 'question_description', 'options', 'is_multi_select']
 
 class MultipleChoiceResponseSerializer(serializers.ModelSerializer):
     question = MultipleChoiceQuestionSerializer(read_only=True)
-    selected_option = serializers.SerializerMethodField()
+    selected_options = serializers.SerializerMethodField()
     options = serializers.SerializerMethodField()
 
     class Meta:
         model = MultipleChoiceResponse
-        fields = ['question', 'options', 'selected_option']
+        fields = ['question', 'options', 'selected_options']
 
     def get_options(self, obj):
         # Get all options for the question
         options = MultipleChoiceOption.objects.filter(question=obj.question)
         return MultipleChoiceOptionSerializer(options, many=True).data
 
-    def get_selected_option(self, obj):
-        # Return the option text if selected, otherwise None
-        return obj.selected_option.option if obj.selected_option else None
+    def get_selected_options(self, obj):
+        return [o.option for o in obj.selected_options.all()]

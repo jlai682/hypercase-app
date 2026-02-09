@@ -53,5 +53,9 @@ class OpenQuestionResponseAdmin(admin.ModelAdmin):
 
 @admin.register(MultipleChoiceResponse)
 class MultipleChoiceResponseAdmin(admin.ModelAdmin):
-    list_display = ('id', 'survey', 'question', 'selected_option')
+    list_display = ('id', 'survey', 'question', 'get_selected_options')
     list_filter = ('survey__status',)
+
+    def get_selected_options(self, obj):
+        return ', '.join(o.option for o in obj.selected_options.all()) or 'No selection'
+    get_selected_options.short_description = 'Selected Options'

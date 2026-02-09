@@ -26,7 +26,7 @@ import {
 
 // Component-specific types
 interface SelectedOptions {
-  [key: number]: Option;
+  [key: number]: Option[];
 }
 
 interface OpenResponses {
@@ -38,7 +38,7 @@ interface OpenResponses {
 
 interface MultipleChoiceResponse {
   questionObject: MultipleChoiceQuestion;
-  response: Option | null;
+  response: Option[] | null;
 }
 
 interface RadioButtonProps {
@@ -57,6 +57,23 @@ const RadioButton: React.FC<RadioButtonProps> = ({ selected, onSelect, label }) 
   >
     <View style={[styles.radio, selected && styles.radioSelected]}>
       {selected && <View style={styles.radioInner} />}
+    </View>
+    <Text style={[styles.radioLabel, selected && styles.radioLabelSelected]}>
+      {label}
+    </Text>
+  </Pressable>
+);
+
+const CheckboxButton: React.FC<RadioButtonProps> = ({ selected, onSelect, label }) => (
+  <Pressable
+    onPress={onSelect}
+    style={({ pressed }) => [
+      styles.radioOption,
+      pressed && styles.radioOptionPressed
+    ]}
+  >
+    <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+      {selected && <Text style={styles.checkmark}>✓</Text>}
     </View>
     <Text style={[styles.radioLabel, selected && styles.radioLabelSelected]}>
       {label}
@@ -85,18 +102,22 @@ function SurveyResponder(): React.JSX.Element {
     const responses: MultipleChoiceResponse[] = surveyData.multiple_choice_responses.map(
       (questionObj, index) => ({
         questionObject: questionObj,
-        response: selectedOptions[index] || null,
+        response: selectedOptions[index]?.length > 0 ? selectedOptions[index] : null,
       })
     );
 
     setMultipleChoiceResponses(responses);
   }, [selectedOptions, surveyData]);
 
-  const handleOptionSelect = (index: number, option: Option): void => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [index]: option,
-    }));
+  const handleOptionSelect = (index: number, option: Option, isMultiSelect: boolean): void => {
+    setSelectedOptions((prev) => {
+      if (isMultiSelect) {
+        const current = prev[index] || [];
+        const exists = current.some(o => o.id === option.id);
+        return { ...prev, [index]: exists ? current.filter(o => o.id !== option.id) : [...current, option] };
+      }
+      return { ...prev, [index]: [option] };
+    });
   };
 
   const handleOpenResponseChange = (index: number, text: string): void => {
@@ -116,7 +137,7 @@ function SurveyResponder(): React.JSX.Element {
 
     // Validate all questions are answered
     const totalMultipleChoice = surveyData.multiple_choice_responses.length;
-    const answeredMultipleChoice = Object.keys(selectedOptions).length;
+    const answeredMultipleChoice = Object.values(selectedOptions).filter(arr => arr.length > 0).length;
 
     const totalOpenResponses = surveyData.open_responses.length;
     const answeredOpenResponses = Object.values(openResponses).filter(
@@ -230,14 +251,23 @@ function SurveyResponder(): React.JSX.Element {
                         {item.question.question_description}
                       </Text>
                       <View style={styles.options}>
-                        {item.options.map((option) => (
-                          <RadioButton
-                            key={option.id}
-                            label={option.option}
-                            selected={selectedOptions[index]?.id === option.id}
-                            onSelect={() => handleOptionSelect(index, option)}
-                          />
-                        ))}
+                        {item.options.map((option) =>
+                          item.question.is_multi_select ? (
+                            <CheckboxButton
+                              key={option.id}
+                              label={option.option}
+                              selected={selectedOptions[index]?.some(o => o.id === option.id) ?? false}
+                              onSelect={() => handleOptionSelect(index, option, true)}
+                            />
+                          ) : (
+                            <RadioButton
+                              key={option.id}
+                              label={option.option}
+                              selected={selectedOptions[index]?.[0]?.id === option.id}
+                              onSelect={() => handleOptionSelect(index, option, false)}
+                            />
+                          )
+                        )}
                       </View>
                     </View>
                   )}
@@ -376,6 +406,25 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     backgroundColor: '#00205B',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#00205B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxSelected: {
+    borderColor: '#00205B',
+    backgroundColor: '#E6F0FF',
+  },
+  checkmark: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#00205B',
   },
   radioLabel: {
     fontSize: 15,
