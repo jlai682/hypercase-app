@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginBottom: 4,
   },
   welcomeSubtitle: {
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   taskItem: {
     flexDirection: 'row',
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     color: '#041575',
     marginTop: 16,
     marginBottom: 8,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   noTasksText: {
     fontSize: 15,

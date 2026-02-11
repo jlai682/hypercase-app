@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   card: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingTop: 5,
     paddingBottom: 5,

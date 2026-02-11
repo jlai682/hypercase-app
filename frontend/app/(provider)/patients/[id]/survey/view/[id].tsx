@@ -166,9 +166,9 @@ const styles = StyleSheet.create({
   surveyTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#00205B',
+    color: '#041575',
     marginBottom: 24,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     paddingHorizontal: 20,
     paddingTop: 20,
   },
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   question: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#00205B',
+    color: '#041575',
     marginBottom: 12,
     fontFamily: 'Figtree_400Regular',
   },

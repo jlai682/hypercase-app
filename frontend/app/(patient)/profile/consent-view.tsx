@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     color: '#041575',
     textAlign: 'center',
     marginBottom: 16,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   divider: {
     height: 1,

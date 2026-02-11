@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginTop: 4,
   },
   underline: {
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   totalCount: {
     fontSize: 14,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginBottom: 16,
   },
   searchInputContainer: {

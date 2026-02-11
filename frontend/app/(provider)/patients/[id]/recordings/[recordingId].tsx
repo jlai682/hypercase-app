@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     color: '#041575',
     textAlign: 'center',
     marginBottom: 8,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   recordingSubtitle: {
     fontSize: 14,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     fontSize: 56,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   avqiBadge: {
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
@@ -390,14 +390,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   qualityStatus: {
     fontSize: 28,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 16,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   warningsContainer: {
     backgroundColor: '#FEF3E2',
@@ -459,11 +459,11 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#E74C3C',
     marginTop: 12,
     textAlign: 'center',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   errorMessage: {
     fontSize: 14,

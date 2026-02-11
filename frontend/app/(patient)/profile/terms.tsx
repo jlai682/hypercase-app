@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#041575',
     marginBottom: 12,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   paragraph: {
     fontSize: 15,

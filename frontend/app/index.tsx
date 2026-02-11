@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 35,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginBottom: 20,
     color: '#041575',
   },

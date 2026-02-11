@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginBottom: 4,
   },
   headerSubtitle: {
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   countBadge: {
     backgroundColor: '#041575',

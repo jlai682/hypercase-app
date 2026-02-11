@@ -119,9 +119,9 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginTop: 20,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   card: {
     backgroundColor: 'white',
@@ -151,10 +151,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: 6,
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   input: {
     backgroundColor: 'white',

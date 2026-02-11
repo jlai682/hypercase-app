@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   statusDot: {
     position: 'absolute',
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginBottom: 4,
   },
   patientEmail: {
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   statStatus: {
     fontSize: 13,
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#041575',
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
     marginBottom: 12,
   },
   viewAllLink: {
@@ -898,10 +898,10 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#041575',
     marginBottom: 15,
-    fontFamily: 'Figtree_400Regular',
+    fontFamily: 'Figtree_700Bold',
   },
   input: {
     width: '100%',

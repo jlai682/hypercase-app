@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 32,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#cae7ff',
   },
   message: {
     fontSize: 18,
@@ -31,16 +31,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     color: '#1F2937',
     fontWeight: '500',
+    fontFamily: 'Figtree_400Regular',
   },
   button: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#041575',
     paddingVertical: 16,
     paddingHorizontal: 28,
     borderRadius: 10,
     marginTop: 12,
     width: '100%',
     maxWidth: 300,
-    boxShadow: '0px 3px 4px 0px rgba(37, 99, 235, 0.2)',
+    boxShadow: '0px 3px 4px 0px rgba(4, 21, 117, 0.2)',
     elevation: 3,
   },
   buttonText: {
@@ -49,5 +50,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     letterSpacing: 0.5,
+    fontFamily: 'Figtree_400Regular',
   },
 });
