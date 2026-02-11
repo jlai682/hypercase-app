@@ -110,12 +110,24 @@ REST_FRAMEWORK = {
 }
 
 
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'false').lower() == 'true'
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+    if origin.strip()
+] or [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://localhost:8081",
+    "http://localhost:19000",
+    "http://localhost:19006",
+    "http://127.0.0.1:19000",
+    "http://127.0.0.1:19006",
+]
 
 CORS_ALLOW_HEADERS = [
-    'content-type',
-    'authorization',
     'accept',
     'accept-encoding',
     'authorization',
@@ -127,8 +139,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'cache-control',
     'pragma',
-    'Authorization',
-    'range'
+    'range',
 ]
 
 CORS_EXPOSE_HEADERS = [
@@ -137,28 +148,6 @@ CORS_EXPOSE_HEADERS = [
     'accept-ranges',
     'content-type',
 ]
-'''
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",     # If using React
-    "http://localhost:8000",     # Django dev server
-    "http://localhost:8081",     # Alternate port
-    "http://localhost:19000",    # Expo development server
-    "http://localhost:19006",    # Expo web
-    "exp://localhost:19000",     # Expo client
-    "http://127.0.0.1:19000",    # Expo development server alternative
-    "http://127.0.0.1:19006",    # Expo web alternative
-    "exp://127.0.0.1:19000",     # Expo client alternative
-    "http://172.20.8.4",         # Example specific IP
-    "http://172.20.24.16",       # Example specific IP
-    "http://192.168.1.160",
-    "http://172.20.94.74:8000"
-    # Add more IPs as needed for testing on different devices
-    # For example, if testing on a phone connected to your local network:
-    # You may also need to add entries for your machine's actual IP address
-]
-'''
-# For development, you might want to allow all origins
-# CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -168,9 +157,6 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
-
-# Alternative: Allow all origins for development
-# CORS_ALLOW_ALL_ORIGINS = True
 
 
 

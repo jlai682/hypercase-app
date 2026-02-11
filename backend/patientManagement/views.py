@@ -4,7 +4,6 @@ from .models import Patient
 from .forms import PatientForm, UserForm
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
 import json
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -157,16 +156,3 @@ def patient_profile(request):
         return Response(patient_data)
     except Patient.DoesNotExist:
         return Response({"error": "Patient profile not found."}, status=404)
-
-def delete_all_users(request):
-    try:
-        # Delete all Patient records
-        Patient.objects.all().delete()
-
-        # Delete all User records
-        User.objects.all().delete()
-
-        return JsonResponse({'message': 'All users and associated patient records have been deleted successfully.'}, status=200)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-    
