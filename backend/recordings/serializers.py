@@ -5,7 +5,6 @@ from django.conf import settings
 from django.utils import timezone
 
 from .models import Recording, RecordingRequest, VoiceAnalytics
-from .utils import generate_recording_token
 from patientManagement.models import Patient
 from providerManagement.models import Provider
 
@@ -35,23 +34,10 @@ class RecordingSerializer(serializers.ModelSerializer):
         read_only_fields = ['file_size', 'file_type', 'created_at']
     
     def get_file_url(self, obj):
-        """Return a signed absolute URL to the audio file.
-
-        The URL includes a time-limited token that serve_recording validates
-        before serving the file. This prevents unauthenticated access to
-        recording files while remaining compatible with audio players that
-        cannot send Authorization headers (e.g. iOS AVPlayer, expo-av).
-        """
+        """Return the absolute URL to the audio file with HTTPS."""
         if not obj.audio_file:
             return None
-
-        # Compute file_path as seen by the serve_recording URL pattern.
-        # audio_file.name = 'recordings/patient_1/file.m4a'
-        # URL pattern captures everything after /media/recordings/
-        audio_name = obj.audio_file.name
-        file_path = audio_name[len('recordings/'):] if audio_name.startswith('recordings/') else audio_name
-        token = generate_recording_token(file_path)
-
+        
         request = self.context.get('request')
         if request:
             try:
@@ -59,16 +45,16 @@ class RecordingSerializer(serializers.ModelSerializer):
                 # Force HTTPS in production
                 if not settings.DEBUG and url.startswith('http://'):
                     url = url.replace('http://', 'https://', 1)
-                return f"{url}?token={token}"
+                return url
             except Exception as e:
                 logger.warning(f"Failed to build absolute URI: {e}")
 
         # Fallback: use configured MEDIA_URL_BASE or construct from settings
         media_base = getattr(settings, 'MEDIA_URL_BASE', None)
         if media_base:
-            return f"{media_base}{obj.audio_file.url}?token={token}"
-
-        return f"{obj.audio_file.url}?token={token}"
+            return f"{media_base}{obj.audio_file.url}"
+        
+        return obj.audio_file.url
     
     def create(self, validated_data):
         """Create a new recording with file metadata."""

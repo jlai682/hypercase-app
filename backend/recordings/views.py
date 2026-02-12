@@ -15,7 +15,6 @@ from rest_framework.response import Response
 from .models import Recording, RecordingRequest, VoiceAnalytics
 from .serializers import RecordingSerializer, RecordingRequestSerializer, RecordingRequestListSerializer, VoiceAnalyticsSerializer
 from .analytics.tasks import process_voice_analytics_async
-from .utils import verify_recording_token
 from patientManagement.models import Patient
 from providerManagement.models import Provider, ProviderPatientConnection
 
@@ -356,12 +355,7 @@ def serve_recording(request, file_path):
         response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
         response['Access-Control-Max-Age'] = '86400'
         return response
-
-    # Verify signed token (prevents unauthenticated access to recordings)
-    token = request.GET.get('token')
-    if not token or not verify_recording_token(token, file_path):
-        raise Http404("Recording not found")
-
+    
     # Validate file path (prevent directory traversal)
     if not re.match(r'^[a-zA-Z0-9_/.-]+$', file_path):
         raise Http404("Invalid file path")
