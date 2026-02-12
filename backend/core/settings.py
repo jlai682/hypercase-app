@@ -62,7 +62,7 @@ ALLOWED_AUDIO_FORMATS = [
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'true').lower() != 'false'
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 
 if os.environ.get('PRODUCTION') == 'true':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
