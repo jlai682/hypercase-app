@@ -13,7 +13,6 @@ import { useAuth } from '@/components/auth/AuthContext';
 import BackButton from '@/components/ui/BackButton';
 import { showAlert } from '@/components/utils/alerts';
 import { useLocalSearchParams } from 'expo-router';
-import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 
 type SignupType = 'patient' | 'provider';
 
@@ -112,16 +111,6 @@ const Signup = (): React.JSX.Element => {
           <Text style={styles.buttonText}>Sign Up</Text>
         </TouchableOpacity>
 
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <GoogleSignInButton
-          onPress={() => {}}
-          label="Sign up with Google"
-        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -165,23 +154,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Figtree_400Regular',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 300,
-    marginBottom: 15,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#999',
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: '#666',
     fontFamily: 'Figtree_400Regular',
   },
 });

@@ -7,7 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "BACKEND_URL": "http://localhost:8000"
+      }
     },
     "development-simulator": {
       "developmentClient": true,
@@ -15,15 +18,24 @@
       "ios": {
         "simulator": true
       },
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "BACKEND_URL": "http://localhost:8000"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "BACKEND_URL": "https://api.acousticareapp.com"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "BACKEND_URL": "https://api.acousticareapp.com"
+      }
     }
   },
   "submit": {
