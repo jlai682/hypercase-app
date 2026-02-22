@@ -35,6 +35,16 @@ RECORDINGS_DIR = os.path.join(MEDIA_ROOT, 'recordings')
 # Ensure directories exist
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
+# S3 storage for recordings (production)
+if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+    AWS_DEFAULT_ACL = 'private'
+    AWS_S3_ENCRYPTION = True
+    AWS_S3_OBJECT_PARAMETERS = {'ServerSideEncryption': 'aws:kms'}
+    AWS_QUERYSTRING_EXPIRE = 3600  # Pre-signed URL expiry in seconds
+
 # For handling file uploads, you might want to adjust these settings:
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
@@ -68,6 +78,7 @@ if os.environ.get('PRODUCTION') == 'true':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    CSRF_TRUSTED_ORIGINS = ['https://api.acousticareapp.com']
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -87,8 +98,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'recordings',
+    'storages',
     'surveyManagement',
     "whitenoise.runserver_nostatic",
+    'core',
 ]
 
 SIMPLE_JWT = {

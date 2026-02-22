@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.routers import DefaultRouter
 
+from core.views import health_check
 from recordings.views import serve_recording
 from signatures.api.urls import sig_router
 
@@ -30,6 +31,9 @@ router = DefaultRouter()
 router.registry.extend(sig_router.registry)
 
 urlpatterns = [
+    # Health check (ALB target group)
+    path('health/', health_check, name='health_check'),
+
     # Admin
     path('admin/', admin.site.urls),
 
