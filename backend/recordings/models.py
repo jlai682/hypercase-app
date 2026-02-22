@@ -103,11 +103,11 @@ def delete_recording_file(sender, instance, **kwargs):
     """Delete the audio file when Recording instance is deleted."""
     if instance.audio_file:
         try:
-            file_path = instance.audio_file.path
-            if os.path.isfile(file_path):
-                os.remove(file_path)
+            # django-storages handles S3 deletion transparently
+            # For local storage, .delete() removes the file from disk
+            # For S3 storage, .delete() removes the object from the bucket
+            instance.audio_file.delete(save=False)
         except Exception as e:
-            # Log the error but don't prevent deletion
             logger.error(f"Failed to delete recording file {instance.audio_file.name}: {e}")
             
 class RecordingRequest(models.Model):

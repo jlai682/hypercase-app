@@ -12,8 +12,11 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from django.shortcuts import redirect
+
 from .models import Recording, RecordingRequest, VoiceAnalytics
 from .serializers import RecordingSerializer, RecordingRequestSerializer, RecordingRequestListSerializer, VoiceAnalyticsSerializer
+from .utils import verify_recording_token
 from .analytics.tasks import process_voice_analytics_async
 from patientManagement.models import Patient
 from providerManagement.models import Provider, ProviderPatientConnection
@@ -344,9 +347,12 @@ def get_patient_recordings(request, patient_id):
 @require_http_methods(["GET", "HEAD", "OPTIONS"])
 def serve_recording(request, file_path):
     """
-    Serve audio recordings with range request support for iOS AVPlayer.
+    Serve audio recordings.
+    - Requires a valid signed token (?token= query parameter).
+    - Local storage: stream from disk with range request support.
+    - S3 storage: redirect to a pre-signed URL.
     """
-    # Handle OPTIONS for CORS preflight
+    # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = HttpResponse()
         response['Access-Control-Allow-Origin'] = '*'
@@ -355,23 +361,46 @@ def serve_recording(request, file_path):
         response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
         response['Access-Control-Max-Age'] = '86400'
         return response
-    
-    # Validate file path (prevent directory traversal)
+
+    # Verify signed token (prevents unauthenticated access to recordings)
+    token = request.GET.get('token')
+    if not token or not verify_recording_token(token, file_path):
+        raise Http404("Recording not found")
+
+    # S3 mode: generate pre-signed URL and redirect
+    if hasattr(settings, 'AWS_STORAGE_BUCKET_NAME') and settings.AWS_STORAGE_BUCKET_NAME:
+        import boto3
+        s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
+        s3_key = f"recordings/{file_path}"
+
+        try:
+            presigned_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': s3_key,
+                },
+                ExpiresIn=3600,  # 1 hour
+            )
+            return redirect(presigned_url)
+        except Exception:
+            raise Http404("Recording not found")
+
+    # Local mode: existing file serving logic
     if not re.match(r'^[a-zA-Z0-9_/.-]+$', file_path):
         raise Http404("Invalid file path")
-    
+
     full_path = os.path.join(settings.MEDIA_ROOT, 'recordings', file_path)
-    
+
     # Security check: ensure path doesn't escape media root
     if not os.path.abspath(full_path).startswith(os.path.abspath(settings.MEDIA_ROOT)):
         raise Http404("Invalid file path")
-    
+
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise Http404("Recording not found")
-    
+
     file_size = os.path.getsize(full_path)
-    
-    # Determine content type
+
     content_types = {
         '.m4a': 'audio/x-m4a',
         '.mp3': 'audio/mpeg',
@@ -382,8 +411,7 @@ def serve_recording(request, file_path):
     }
     ext = os.path.splitext(full_path)[1].lower()
     content_type = content_types.get(ext, 'application/octet-stream')
-    
-    # Handle HEAD request
+
     if request.method == 'HEAD':
         response = HttpResponse()
         response['Content-Type'] = content_type
@@ -392,25 +420,24 @@ def serve_recording(request, file_path):
         response['Access-Control-Allow-Origin'] = '*'
         response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'
         return response
-    
-    # Parse Range header
+
     range_header = request.META.get('HTTP_RANGE', '').strip()
-    
+
     if range_header and range_header.startswith('bytes='):
         range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
         if not range_match:
             return HttpResponse(status=400)
-        
+
         start = int(range_match.group(1))
         end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
-        
+
         if start >= file_size or end >= file_size or start > end:
             response = HttpResponse(status=416)
             response['Content-Range'] = f'bytes */{file_size}'
             return response
-        
+
         content_length = end - start + 1
-        
+
         def file_iterator(chunk_size=8192):
             with open(full_path, 'rb') as f:
                 f.seek(start)
@@ -421,12 +448,11 @@ def serve_recording(request, file_path):
                         break
                     remaining -= len(chunk)
                     yield chunk
-        
+
         response = StreamingHttpResponse(file_iterator(), status=206, content_type=content_type)
         response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
         response['Content-Length'] = str(content_length)
     else:
-        # Full file response
         def file_iterator(chunk_size=8192):
             with open(full_path, 'rb') as f:
                 while True:
@@ -434,10 +460,10 @@ def serve_recording(request, file_path):
                     if not chunk:
                         break
                     yield chunk
-        
+
         response = StreamingHttpResponse(file_iterator(), content_type=content_type)
         response['Content-Length'] = str(file_size)
-    
+
     response['Accept-Ranges'] = 'bytes'
     response['Access-Control-Allow-Origin'] = '*'
     response['Access-Control-Expose-Headers'] = 'Content-Length, Content-Range, Accept-Ranges, Content-Type'

@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .models import Recording, RecordingRequest, VoiceAnalytics
+from .utils import generate_recording_token
 from patientManagement.models import Patient
 from providerManagement.models import Provider
 
@@ -34,27 +35,39 @@ class RecordingSerializer(serializers.ModelSerializer):
         read_only_fields = ['file_size', 'file_type', 'created_at']
     
     def get_file_url(self, obj):
-        """Return the absolute URL to the audio file with HTTPS."""
+        """Return a signed absolute URL to the audio file.
+
+        Always routes through the Django serve_recording endpoint
+        (/media/recordings/<path>?token=...) so the token is validated
+        server-side. In S3 mode, that endpoint generates a pre-signed
+        URL and redirects. Using obj.audio_file.url directly would
+        return a bare S3 URL that bypasses token validation and 403s
+        on the private bucket.
+        """
         if not obj.audio_file:
             return None
-        
+
+        # Compute file_path as seen by the serve_recording URL pattern.
+        # audio_file.name = 'recordings/patient_1/file.m4a'
+        # URL pattern captures everything after /media/recordings/
+        audio_name = obj.audio_file.name
+        file_path = audio_name[len('recordings/'):] if audio_name.startswith('recordings/') else audio_name
+        token = generate_recording_token(file_path)
+
+        # Build URL to the Django endpoint, not to the storage backend.
+        relative_url = f"/media/recordings/{file_path}"
+
         request = self.context.get('request')
         if request:
             try:
-                url = request.build_absolute_uri(obj.audio_file.url)
-                # Force HTTPS in production
+                url = request.build_absolute_uri(relative_url)
                 if not settings.DEBUG and url.startswith('http://'):
                     url = url.replace('http://', 'https://', 1)
-                return url
+                return f"{url}?token={token}"
             except Exception as e:
                 logger.warning(f"Failed to build absolute URI: {e}")
 
-        # Fallback: use configured MEDIA_URL_BASE or construct from settings
-        media_base = getattr(settings, 'MEDIA_URL_BASE', None)
-        if media_base:
-            return f"{media_base}{obj.audio_file.url}"
-        
-        return obj.audio_file.url
+        return f"{relative_url}?token={token}"
     
     def create(self, validated_data):
         """Create a new recording with file metadata."""
