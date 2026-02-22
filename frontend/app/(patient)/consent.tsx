@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Checkbox } from 'expo-checkbox';
 import { useAuth } from "@/components/auth/AuthContext";
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -175,7 +175,15 @@ function ConsentForm({ onSubmit, signupType }: ConsentFormProps): JSX.Element {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+    <ScrollView
+      style={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.formContainer}>
         <View style={styles.headerContainer}>
           <Text style={styles.title}>AUDIO RECORDING CONSENT FORM</Text>
@@ -309,6 +317,7 @@ function ConsentForm({ onSubmit, signupType }: ConsentFormProps): JSX.Element {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
