@@ -76,6 +76,7 @@ DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 
 if os.environ.get('PRODUCTION') == 'true':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     CSRF_TRUSTED_ORIGINS = ['https://api.acousticareapp.com']

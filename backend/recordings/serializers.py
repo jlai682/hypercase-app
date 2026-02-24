@@ -149,7 +149,7 @@ class RecordingRequestListSerializer(serializers.ModelSerializer):
     
     def get_patient_name(self, obj):
         if obj.patient:
-            return f"{obj.patient.firstName} {obj.patient.lastName}"
+            return f"Patient {obj.patient.unique_id}"
         return None
     
     def get_provider_name(self, obj):

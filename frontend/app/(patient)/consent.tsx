@@ -88,14 +88,28 @@ function ConsentForm({ onSubmit, signupType }: ConsentFormProps): JSX.Element {
 
     // First validate required fields
     if (!isChecked || !signature.trim() || !date.trim()) {
-      showAlert('Incomplete Login', 'Please complete all required fields and accept the terms.');
+      showAlert('Incomplete Form', 'Please complete all required fields and accept the terms.');
       return;
     }
-    
+
     // Validate patient exists
     if (!patient?.id) {
       console.error('No patient ID available');
       showAlert('User not found', 'Patient information not found. Please try again.');
+      return;
+    }
+
+    // Validate signature matches patient's unique ID
+    if (signature.trim() !== patient.unique_id) {
+      showAlert('Signature Mismatch', 'Your digital signature must match your unique ID.');
+      return;
+    }
+
+    // Validate date is today's date
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    if (date.trim() !== todayStr) {
+      showAlert('Invalid Date', `The date must be today's date (${todayStr}).`);
       return;
     }
     
@@ -286,7 +300,7 @@ function ConsentForm({ onSubmit, signupType }: ConsentFormProps): JSX.Element {
             style={styles.input}
             value={signature}
             onChangeText={setSignature}
-            placeholder="Type your full name"
+            placeholder="Type your unique ID"
             placeholderTextColor={COLORS.disabledText}
           />
         </View>

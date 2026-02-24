@@ -21,7 +21,7 @@ import BackButton from '@/components/ui/BackButton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Recording } from '@/types';
 import {
-  usePatientByEmail,
+  usePatientByUniqueId,
   useSurveysByPatient,
   useRecordingsByPatient,
   useRecordingRequestsByPatient,
@@ -42,10 +42,10 @@ interface PlayingAudio {
 
 function PatientDetailsScreen(): React.JSX.Element {
   const router = useRouter();
-  const { id, email } = useLocalSearchParams<{ id: string; email: string }>();
+  const { id, unique_id } = useLocalSearchParams<{ id: string; unique_id: string }>();
 
   // Tanstack Query hooks for data fetching
-  const { data: patient, error: patientError } = usePatientByEmail(email);
+  const { data: patient, error: patientError } = usePatientByUniqueId(unique_id);
   const { data: surveys = [] } = useSurveysByPatient(patient?.id);
   const { data: previousRecordings = [] } = useRecordingsByPatient(patient?.id);
   const { data: recordingRequests = [] } = useRecordingRequestsByPatient(patient?.id);
@@ -70,9 +70,7 @@ function PatientDetailsScreen(): React.JSX.Element {
    */
   const getInitials = (): string => {
     if (!patient) return '?';
-    const first = patient.firstName?.charAt(0)?.toUpperCase() || '';
-    const last = patient.lastName?.charAt(0)?.toUpperCase() || '';
-    return `${first}${last}`;
+    return patient.unique_id?.substring(0, 2) || 'P';
   };
 
   /**
@@ -336,9 +334,8 @@ function PatientDetailsScreen(): React.JSX.Element {
           {patient ? (
             <>
               <Text style={styles.patientName}>
-                {patient.firstName} {patient.lastName}
+                Patient {patient.unique_id}
               </Text>
-              <Text style={styles.patientEmail}>{patient.email}</Text>
             </>
           ) : (
             <Text style={styles.patientName}>Loading...</Text>

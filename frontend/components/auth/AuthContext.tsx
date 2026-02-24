@@ -125,7 +125,7 @@ export const AuthProvider = ({ children }) => {
                 : `${config.BACKEND_URL}/api/providerManagement/register/`;
 
             const requestBody = signupType === 'patient'
-                ? { email, password, firstName, lastName, age: Number(age) }
+                ? { unique_id: email, password, age: Number(age) }
                 : { email, password, firstName, lastName };
 
             const response = await fetch(endpoint, {
@@ -174,10 +174,14 @@ export const AuthProvider = ({ children }) => {
                 : `${config.BACKEND_URL}/api/patientManagement/login/`;
             console.log(endpoint)
 
+            const loginBody = loginType === 'patient'
+                ? { unique_id: email, password }
+                : { email, password };
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify(loginBody),
             });
 
             const data = await response.json();
@@ -213,7 +217,7 @@ export const AuthProvider = ({ children }) => {
             }
         } catch (error: any) {
             // Only show generic error if it's a network/fetch error, not a login failure
-            if (error.message && !error.message.includes('Invalid email')) {
+            if (error.message && !error.message.includes('Invalid')) {
                 console.error('Login error:', error);
                 showAlert('Error', 'Something went wrong. Please try again.');
             }

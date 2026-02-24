@@ -2,9 +2,7 @@
 
 export interface Patient {
   id: string | number;
-  firstName: string;
-  lastName: string;
-  email: string;
+  unique_id: string;
   age?: number;
   date_joined?: string;
 }

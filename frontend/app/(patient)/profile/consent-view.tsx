@@ -120,10 +120,10 @@ function ConsentViewScreen(): React.JSX.Element {
           <View style={styles.signatureSection}>
             <Text style={styles.signatureLabel}>Signed By</Text>
             <Text style={styles.signatureValue}>
-              {patient?.firstName} {patient?.lastName}
+              Patient {patient?.unique_id}
             </Text>
-            <Text style={styles.signatureLabel}>Email</Text>
-            <Text style={styles.signatureValue}>{patient?.email}</Text>
+            <Text style={styles.signatureLabel}>ID</Text>
+            <Text style={styles.signatureValue}>{patient?.unique_id}</Text>
           </View>
         </View>
 
@@ -132,7 +132,7 @@ function ConsentViewScreen(): React.JSX.Element {
           <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
           <Text style={styles.infoText}>
             To revoke your consent or request changes, please contact your healthcare provider
-            or reach out to acousticare@gmail.com
+            or reach out to acousticareapp@gmail.com
           </Text>
         </View>
       </ScrollView>

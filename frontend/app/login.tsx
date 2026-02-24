@@ -20,7 +20,7 @@ const Login = (): React.JSX.Element => {
 
   const handleLogin = async (): Promise<void> => {
     if (!email || !password) {
-      showAlert('Validation Error', 'Please fill in both email and password');
+      showAlert('Validation Error', loginType === 'patient' ? 'Please fill in both your ID and password' : 'Please fill in both email and password');
       return;
     }
 
@@ -49,11 +49,12 @@ const Login = (): React.JSX.Element => {
 
         <TextInput
           style={[styles.input, styles.inputText]}
-          placeholder="example@gmail.com"
+          placeholder={loginType === 'patient' ? '10-Digit Unique ID' : 'example@gmail.com'}
           value={email}
           onChangeText={setEmail}
-          keyboardType="email-address"
+          keyboardType={loginType === 'patient' ? 'number-pad' : 'email-address'}
           autoCapitalize="none"
+          maxLength={loginType === 'patient' ? 10 : undefined}
         />
 
         <TextInput

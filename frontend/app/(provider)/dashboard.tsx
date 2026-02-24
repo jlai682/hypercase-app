@@ -26,18 +26,18 @@ function ProviderDashScreen(): React.JSX.Element {
   const connectMutation = useConnectToPatient();
 
   // Local state for search input
-  const [email, setEmail] = useState<string>('');
+  const [uniqueId, setUniqueId] = useState<string>('');
 
   /**
-   * Search for a patient by email
+   * Search for a patient by unique ID
    */
   const handleSearch = (): void => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+    if (!uniqueId.trim()) {
+      Alert.alert('Error', 'Please enter a patient 10-digit ID');
       return;
     }
 
-    searchMutation.mutate(email, {
+    searchMutation.mutate(uniqueId, {
       onError: (error) => {
         Alert.alert('Error', error.message || 'Patient not found');
       },
@@ -54,11 +54,11 @@ function ProviderDashScreen(): React.JSX.Element {
       return;
     }
 
-    connectMutation.mutate(searchedPatient.email, {
+    connectMutation.mutate(searchedPatient.unique_id, {
       onSuccess: () => {
         Alert.alert('Success', 'Successfully connected to patient');
         // Reset search state
-        setEmail('');
+        setUniqueId('');
         searchMutation.reset();
       },
       onError: (error) => {
@@ -73,7 +73,7 @@ function ProviderDashScreen(): React.JSX.Element {
   const navigateToPatientProfile = (patient: Patient): void => {
     router.push({
       pathname: `/(provider)/patients/${patient.id}` as any,
-      params: { email: patient.email }
+      params: { unique_id: patient.unique_id }
     });
   };
 
@@ -120,10 +120,7 @@ function ProviderDashScreen(): React.JSX.Element {
                       </View>
                       <View style={styles.patientInfo}>
                         <Text style={styles.patientName}>
-                          {connection.patient.firstName} {connection.patient.lastName}
-                        </Text>
-                        <Text style={styles.patientEmail}>
-                          {connection.patient.email}
+                          Patient {connection.patient.unique_id}
                         </Text>
                       </View>
                       <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
@@ -157,12 +154,13 @@ function ProviderDashScreen(): React.JSX.Element {
               <Ionicons name="search-outline" size={20} color="#999" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Enter patient email address"
+                placeholder="Enter patient 10-digit ID"
                 placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
+                value={uniqueId}
+                onChangeText={setUniqueId}
                 autoCapitalize="none"
-                keyboardType="email-address"
+                keyboardType="number-pad"
+                maxLength={10}
                 editable={!searchMutation.isPending}
               />
             </View>
@@ -198,10 +196,7 @@ function ProviderDashScreen(): React.JSX.Element {
                   </View>
                   <View style={styles.patientInfo}>
                     <Text style={styles.patientName}>
-                      {searchedPatient.firstName} {searchedPatient.lastName}
-                    </Text>
-                    <Text style={styles.patientEmail}>
-                      {searchedPatient.email}
+                      Patient {searchedPatient.unique_id}
                     </Text>
                     {searchedPatient.age && (
                       <Text style={styles.patientAge}>Age: {searchedPatient.age}</Text>

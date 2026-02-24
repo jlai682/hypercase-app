@@ -129,34 +129,32 @@ def provider_login(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def search_patient_by_email(request):
+def search_patient_by_unique_id(request):
     try:
         data = request.data
-        email = data.get('email')
+        unique_id = data.get('unique_id')
 
-        if not email:
+        if not unique_id:
             return Response(
-                {'error': 'Email is required'}, 
+                {'error': 'Unique ID is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        patient = Patient.search_by_email(email)
+        patient = Patient.search_by_unique_id(unique_id)
 
         if patient:
             patient_data = {
                 'id': patient.id,
-                'firstName': patient.firstName,
-                'lastName': patient.lastName,
+                'unique_id': patient.unique_id,
                 'age': patient.age,
                 'medical_history': patient.medical_history,
                 'address': patient.address,
                 'phone_number': patient.phone_number,
-                'email': patient.user.email  
             }
             return Response({'patient': patient_data}, status=status.HTTP_200_OK)
         else:
             return Response(
-                {'error': 'Patient not found'}, 
+                {'error': 'Patient not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -195,11 +193,11 @@ def delete_patient_provider_connection(request):
 def connect_provider_to_patient(request):
     try:
         data = request.data
-        patient_email = data.get('patient_email')
+        patient_unique_id = data.get('patient_unique_id')
 
-        if not patient_email:
+        if not patient_unique_id:
             return Response(
-                {'error': 'Patient email is required'},
+                {'error': 'Patient unique ID is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -212,7 +210,7 @@ def connect_provider_to_patient(request):
             )
 
         try:
-            patient = Patient.objects.get(user__email=patient_email)  
+            patient = Patient.objects.get(unique_id=patient_unique_id)
         except Patient.DoesNotExist:
             return Response(
                 {'error': 'Patient not found'},
@@ -262,9 +260,7 @@ def get_provider_patient_connections(request):
             {
                 "patient": {
                     "id": connection.patient.id,
-                    "email": connection.patient.user.email,  
-                    "firstName": connection.patient.firstName,
-                    "lastName": connection.patient.lastName,
+                    "unique_id": connection.patient.unique_id,
                 },
                 "connected_on": connection.connected_on.isoformat()
             }

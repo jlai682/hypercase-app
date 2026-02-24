@@ -84,11 +84,11 @@ function ProfileScreen(): React.JSX.Element {
               <Ionicons name="camera" size={14} color="#fff" />
             </View>
           </View>
-          <Text style={styles.patientName}>{patient.firstName} {patient.lastName}</Text>
+          <Text style={styles.patientName}>Patient {patient.unique_id}</Text>
           <Text style={styles.patientInfo}>
             Age: {patient.age} • Member since {getMemberYear()}
           </Text>
-          <Text style={styles.patientEmail}>{patient.email}</Text>
+          <Text style={styles.patientEmail}>ID: {patient.unique_id}</Text>
 
           <TouchableOpacity style={styles.editProfileButton}>
             <Ionicons name="pencil" size={16} color="#fff" />

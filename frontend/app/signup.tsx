@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,   
-  Platform,               
-  ScrollView               
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
 } from 'react-native';
 import { useAuth } from '@/components/auth/AuthContext';
 import BackButton from '@/components/ui/BackButton';
@@ -26,11 +26,27 @@ const Signup = (): React.JSX.Element => {
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const [age, setAge] = useState<string>('');
+  const [uniqueId, setUniqueId] = useState<string>('');
 
   const validateForm = (): boolean => {
-    if (!firstName || !lastName || !email || !password || (signupType === 'patient' && (!age || isNaN(Number(age))))) {
-      showAlert('Validation Error', 'Please fill all fields correctly');
-      return false;
+    if (signupType === 'patient') {
+      if (!uniqueId || !password || !age || isNaN(Number(age))) {
+        showAlert('Validation Error', 'Please fill all fields correctly');
+        return false;
+      }
+      if (!/^\d{10}$/.test(uniqueId)) {
+        showAlert('Validation Error', 'Unique ID must be exactly 10 digits');
+        return false;
+      }
+      if (Number(age) < 18) {
+        showAlert('Age Restriction', 'You must be 18 or older to use this app.');
+        return false;
+      }
+    } else {
+      if (!firstName || !lastName || !email || !password) {
+        showAlert('Validation Error', 'Please fill all fields correctly');
+        return false;
+      }
     }
     return true;
   };
@@ -39,7 +55,11 @@ const Signup = (): React.JSX.Element => {
     if (!validateForm()) return;
     try {
       console.log("Signup type: ", signupType);
-      await onRegister(email, password, firstName, lastName, signupType, age);
+      if (signupType === 'patient') {
+        await onRegister(uniqueId, password, '', '', signupType, age);
+      } else {
+        await onRegister(email, password, firstName, lastName, signupType);
+      }
       console.log("Successfuly registered!");
     } catch (error) {
       console.error(error);
@@ -48,7 +68,7 @@ const Signup = (): React.JSX.Element => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
@@ -57,7 +77,7 @@ const Signup = (): React.JSX.Element => {
         <BackButton />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -65,40 +85,55 @@ const Signup = (): React.JSX.Element => {
         <Text style={styles.title}>
           {signupType === 'patient' ? 'Patient Signup' : 'Provider Signup'}
         </Text>
-        
-        <TextInput
-          style={styles.input}
-          placeholder="First Name"
-          placeholderTextColor="#041575"
-          value={firstName}
-          onChangeText={setFirstName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Last Name"
-          placeholderTextColor="#041575"
-          value={lastName}
-          onChangeText={setLastName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#041575"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {signupType === 'patient' && (
-          <TextInput
-            style={styles.input}
-            placeholder="Age"
-            placeholderTextColor="#041575"
-            value={age}
-            onChangeText={setAge}
-            keyboardType="numeric"
-          />
+
+        {signupType === 'patient' ? (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="10-Digit Unique ID"
+              placeholderTextColor="#041575"
+              value={uniqueId}
+              onChangeText={setUniqueId}
+              keyboardType="number-pad"
+              maxLength={10}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Age"
+              placeholderTextColor="#041575"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
+          </>
+        ) : (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              placeholderTextColor="#041575"
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              placeholderTextColor="#041575"
+              value={lastName}
+              onChangeText={setLastName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#041575"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </>
         )}
+
         <TextInput
           style={styles.input}
           placeholder="Password"

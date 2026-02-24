@@ -56,7 +56,7 @@ function FinalizeSurvey(): React.JSX.Element {
         onSuccess: () => {
           router.push({
             pathname: `/(provider)/patients/${parsedPatient.id}` as any,
-            params: { email: parsedPatient.email },
+            params: { unique_id: parsedPatient.unique_id },
           });
         },
         onError: (err) => {

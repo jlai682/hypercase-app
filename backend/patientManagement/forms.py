@@ -5,9 +5,9 @@ from .models import Patient
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['username', 'password', 'email']
+        fields = ['username', 'password']
 
 class PatientForm(forms.ModelForm):
     class Meta:
         model = Patient
-        fields = ['firstName', 'lastName', 'age'] 
+        fields = ['unique_id', 'age']

@@ -10,7 +10,7 @@ urlpatterns = [
     path("providerInfo/", views.get_provider_info, name = "provider_info"),
 
     # Patient management (auth required)
-    path('search_patient/', views.search_patient_by_email, name = 'search_patient_by_email'),
+    path('search_patient/', views.search_patient_by_unique_id, name = 'search_patient_by_unique_id'),
     path('connect/', views.connect_provider_to_patient, name='connect_provider_patient'),
     path("myPatients/", views.get_provider_patient_connections, name="provider_patient_connections"),
     path("delete_patient_provider_connection/", views.delete_patient_provider_connection, name='delete_patient_provider_connection'),

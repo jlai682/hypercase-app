@@ -20,7 +20,7 @@ function TermsScreen(): React.JSX.Element {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
             <Text style={styles.paragraph}>
-              By accessing and using the HyperCASE application, you accept and agree to be bound by the terms
+              By accessing and using the AcoustiCare application, you accept and agree to be bound by the terms
               and provisions of this agreement. If you do not agree to abide by these terms, please do not
               use this application.
             </Text>
@@ -29,7 +29,7 @@ function TermsScreen(): React.JSX.Element {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>2. Description of Service</Text>
             <Text style={styles.paragraph}>
-              HyperCASE is a healthcare application designed to facilitate voice recording analysis and
+              AcoustiCare is a healthcare application designed to facilitate voice recording analysis and
               communication between patients and healthcare providers. The service includes but is not
               limited to voice recording, analysis, survey completion, and secure data storage.
             </Text>
@@ -87,7 +87,7 @@ function TermsScreen(): React.JSX.Element {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>7. Limitation of Liability</Text>
             <Text style={styles.paragraph}>
-              To the fullest extent permitted by applicable law, HyperCASE and its affiliates shall not
+              To the fullest extent permitted by applicable law, AcoustiCare and its affiliates shall not
               be liable for any indirect, incidental, special, consequential, or punitive damages, or
               any loss of profits or revenues, whether incurred directly or indirectly, or any loss of
               data, use, goodwill, or other intangible losses.
@@ -108,7 +108,7 @@ function TermsScreen(): React.JSX.Element {
             <Text style={styles.paragraph}>
               If you have any questions about these Terms & Conditions, please contact us at:
             </Text>
-            <Text style={styles.contactInfo}>acousticare@gmail.com</Text>
+            <Text style={styles.contactInfo}>acousticareapp@gmail.com</Text>
           </View>
         </View>
       </ScrollView>

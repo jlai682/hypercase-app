@@ -72,7 +72,7 @@ class Recording(models.Model):
         ]
 
     def __str__(self):
-        patient_name = f"{self.patient.firstName} {self.patient.lastName}" if self.patient else "No Patient"
+        patient_name = f"Patient {self.patient.unique_id}" if self.patient else "No Patient"
         return f"{patient_name} - {self.title or f'Recording {self.id}'}"
 
     @classmethod

@@ -126,10 +126,10 @@ export function useSubmitSurvey() {
 export function useSearchPatient() {
   const { authState } = useAuth();
   return useMutation({
-    mutationFn: (email: string) =>
+    mutationFn: (uniqueId: string) =>
       apiFetch<{ patient: Patient }>('/api/providerManagement/search_patient/', authState.token!, {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ unique_id: uniqueId.trim() }),
       }),
   });
 }
@@ -139,10 +139,10 @@ export function useConnectToPatient() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (patientEmail: string) =>
+    mutationFn: (patientUniqueId: string) =>
       apiFetch('/api/providerManagement/connect/', authState.token!, {
         method: 'POST',
-        body: JSON.stringify({ patient_email: patientEmail }),
+        body: JSON.stringify({ patient_unique_id: patientUniqueId }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provider', 'patients'] });
@@ -154,18 +154,18 @@ export function useConnectToPatient() {
 // Provider - Patient Detail Hooks
 // ============================================
 
-export function usePatientByEmail(email: string | undefined) {
+export function usePatientByUniqueId(uniqueId: string | undefined) {
   const { authState } = useAuth();
   return useQuery({
-    queryKey: ['patient', 'byEmail', email],
+    queryKey: ['patient', 'byUniqueId', uniqueId],
     queryFn: async () => {
       const data = await apiFetch<{ patient: Patient }>('/api/providerManagement/search_patient/', authState.token!, {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ unique_id: uniqueId }),
       });
       return data.patient;
     },
-    enabled: !!authState.token && !!email,
+    enabled: !!authState.token && !!uniqueId,
   });
 }
 

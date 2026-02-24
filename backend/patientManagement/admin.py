@@ -3,19 +3,14 @@ from .models import Patient
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ('firstName', 'lastName', 'get_email', 'age', 'phone_number', 'user')
-    search_fields = ('firstName', 'lastName', 'user__email')  
+    list_display = ('unique_id', 'age', 'phone_number', 'user')
+    search_fields = ('unique_id',)
     list_filter = ('age',)
-    ordering = ('lastName', 'firstName')
-    
-    # Custom method to display email from user
-    @admin.display(description='Email')
-    def get_email(self, obj):
-        return obj.user.email
-    
+    ordering = ('unique_id',)
+
     fieldsets = (
-        ('Personal Information', {
-            'fields': ('user', 'firstName', 'lastName', 'age')
+        ('Patient Information', {
+            'fields': ('user', 'unique_id', 'age')
         }),
         ('Contact Information', {
             'fields': ('phone_number', 'address')
