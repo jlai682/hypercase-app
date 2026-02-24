@@ -37,9 +37,10 @@ class RecordingSerializer(serializers.ModelSerializer):
     def get_file_url(self, obj):
         """Return a playable URL to the audio file.
 
-        In S3 mode: generates a pre-signed S3 URL directly so iOS
-        AVPlayer can stream without following a 302 redirect (which
-        causes NSURLErrorDomain -1100 on iOS).
+        In S3 mode: uses django-storages' S3Boto3Storage to generate
+        a pre-signed S3 URL directly (via obj.audio_file.url). This
+        avoids the serve_recording 302 redirect which causes
+        NSURLErrorDomain -1100 on iOS AVPlayer.
 
         In local/debug mode: routes through the Django serve_recording
         endpoint (/media/recordings/<path>?token=...) which streams
@@ -48,28 +49,21 @@ class RecordingSerializer(serializers.ModelSerializer):
         if not obj.audio_file:
             return None
 
-        audio_name = obj.audio_file.name
-        file_path = audio_name[len('recordings/'):] if audio_name.startswith('recordings/') else audio_name
-
-        # S3 mode: return pre-signed URL directly (no redirect)
+        # S3 mode: django-storages already generates pre-signed URLs
+        # when AWS_QUERYSTRING_AUTH=True (the default). This uses the
+        # storage backend's configured credentials and handles KMS.
         if getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None):
-            import boto3
-            s3_key = audio_name if audio_name.startswith('recordings/') else f"recordings/{audio_name}"
             try:
-                s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
-                presigned_url = s3_client.generate_presigned_url(
-                    'get_object',
-                    Params={
-                        'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                        'Key': s3_key,
-                    },
-                    ExpiresIn=3600,
-                )
-                return presigned_url
+                url = obj.audio_file.url
+                logger.debug(f"S3 pre-signed URL generated for {obj.audio_file.name}")
+                return url
             except Exception as e:
-                logger.warning(f"Failed to generate S3 pre-signed URL: {e}")
+                logger.error(f"Failed to get S3 URL for {obj.audio_file.name}: {e}")
+                return None
 
         # Local mode: route through serve_recording endpoint
+        audio_name = obj.audio_file.name
+        file_path = audio_name[len('recordings/'):] if audio_name.startswith('recordings/') else audio_name
         token = generate_recording_token(file_path)
         relative_url = f"/media/recordings/{file_path}"
 

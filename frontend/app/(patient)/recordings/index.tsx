@@ -51,6 +51,7 @@ function RecordingsScreen(): React.JSX.Element {
   const playRecording = async (item: Recording) => {
     try {
       const fileUrl = item.file_url;
+      console.log(fileUrl)
       if (!fileUrl) {
         Alert.alert('Error', 'No audio file available for this recording');
         return;
